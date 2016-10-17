@@ -1,0 +1,24 @@
+# NPM
+/node_modules/
+
+# Logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Temporary files
+*.sw*
+
+# IDEA Webstorm IDE folder
+.idea
+
+# Dolphin file browser info files
+.directory
+
+# OSX
+.DS_Store
+
+.sublimelinterrc

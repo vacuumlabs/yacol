@@ -1,0 +1,24 @@
+{
+  "name": "coroutines",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "babel-core": "^6.17.0",
+    "babel-eslint": "^7.0.0",
+    "babel-preset-node6": "^11.0.0",
+    "babel-preset-stage-0": "^6.16.0",
+    "babel-watch": "^2.0.3-rc0",
+    "eslint": "^3.7.0",
+    "eslint-plugin-babel": "^3.3.0",
+    "eslint-plugin-import": "^2.0.0",
+    "express": "^4.14.0",
+    "nodemon": "^1.10.2",
+    "pg": "^6.1.0"
+  }
+}
