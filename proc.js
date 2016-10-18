@@ -1,5 +1,5 @@
-import {pushMessage, onReturn, createChannel} from './messaging'
-import {pidString, corroutineEndMessage, handleType} from './constants'
+import {pushMessage, pushEnd, onReturn, createChannel} from './messaging'
+import {pidString, handleType} from './constants'
 
 let idSeq = 0
 const idToProc = {}
@@ -24,16 +24,51 @@ function zoneSet(key, val) {
   zone.public.set(key, val)
 }
 
+const runFromCb = (runnable, handle, parentHandle) => {
+  const rfc = runnable[0]
+  const args = [...runnable].splice(1)
+  rfc.cb(...args, (err, res) => {
+    pushMessage(handle.channel, res)
+    pushEnd(handle.channel)
+  }, parentHandle.channel)
+}
 
-const run = (runnable) => {
-  let gen
-  if (typeof runnable === 'function') {
-    gen = runnable()
-  } else {
-    gen = runnable
-    // console.error('run acceprs coroutine, got', typeof runnable, runnable)
-    // throw new Error('run accepts coroutine (i.e. function)')
+const runCorroutine = (runnable, handle) => {
+
+  const gen = runnable[0].apply(null, [...runnable].splice(1))
+
+  function safeNext(iter, val) {
+    try {
+      const res = iter.next(val)
+      return res
+    } catch (e) {
+      throw e
+    }
   }
+
+  function step(val) {
+    let oldPid
+    try {
+      oldPid = global[pidString]
+      global[pidString] = handle.id
+      let nxt = safeNext(gen, val)
+      if (nxt.done) {
+        pushEnd(handle.channel)
+      } else {
+        nxt = nxt.value
+        let childHandle = run(nxt, handle)
+        onReturn(childHandle.channel, (ret) => {
+          step(ret)
+        })
+      }
+    } finally {
+      global[pidString] = oldPid
+    }
+  }
+  step(null)
+}
+
+const run = (runnable, parentHandle = null) => {
   let id = `${idSeq++}`
 
   let channel = createChannel()
@@ -59,57 +94,43 @@ const run = (runnable) => {
   myZone.public = new Map()
   zoneInfo[id] = myZone
 
-  function safeNext(iter, val) {
-    try {
-      const res = iter.next(val)
-      return res
-    } catch (e) {
-      throw e
-    }
-  }
-
-  function step(val) {
-    let oldPid
-    try {
-      oldPid = global[pidString]
-      global[pidString] = id
-      let nxt = safeNext(gen, val)
-      if (nxt.done) {
-        pushMessage(channel, corroutineEndMessage)
-      } else {
-        nxt = nxt.value
-        //if (!Array.isArray(nxt)) {
-        //  nxt = [nxt]
-        //}
-        let first = nxt[0]
-        let args = [...nxt].splice(1)
-        // TODO check if first is builtin fn
-        if (typeof first === 'function') {
-          let handle = run(first(...args))
-          onReturn(handle.channel, (ret) => {
-            step(ret)
-          })
-        } else if (typeof first === 'object' && first.type === 'RunnableFromCb') {
-          first.cb(...args, (err, res) => step(res), channel)
-        } else {
-          console.error(`unknown yieldable (type: ${typeof first}),`, first)
-          throw new Error('unknown yieldable')
-        }
-      }
-    } finally {
-      global[pidString] = oldPid
-    }
-  }
-  step(null)
-  const result = {
+  const handle = {
     type: handleType,
     id,
-    step,
     channel,
   }
-  idToProc[id] = result
-  return result
+
+  idToProc[id] = handle
+
+  if (typeof runnable === 'function') {
+    runCorroutine([runnable], handle)
+  } else if (Array.isArray(runnable)) {
+    const first = runnable[0]
+    if (typeof first === 'function') {
+      runCorroutine(runnable, handle)
+    } else if (typeof first === 'object' && first.type === 'RunnableFromCb') {
+      runFromCb(runnable, handle, parentHandle)
+    } else {
+      console.error(`unknown runnable (type: ${typeof first}),`, first)
+      throw new Error('unknown runnable')
+    }
+  } else {
+    console.error('runnable should be function or array, got', runnable)
+    throw new Error('unknown runnable')
+  }
+
+  return handle
 }
 
 const zone = {get: zoneGet, set: zoneSet}
 export {run, zone}
+
+/*
+run(generatorFn)
+  - same as array, but no args
+run([generatorFn, ...args)
+  - run generator
+run(runnableFromCb)
+  -
+- returns handle
+*/

@@ -1,7 +1,13 @@
 import {runnableFromCb} from './utils'
-import {channelType, handleType, corroutineEndMessage} from './constants'
+import {channelType, handleType} from './constants'
+import Queue from './queue'
 
-const waitForMessage = new Map()
+//const waitForMessage = new Map()
+
+const queues = new Map()
+const messageListeners = new Map()
+const returnListeners = new Map()
+const channelEnded = new Map()
 
 function sanitizeChannel(channelOrHandle) {
   if (channelOrHandle.type === channelType) {
@@ -30,63 +36,68 @@ export const getReturn = runnableFromCb((channel, cb) => {
 })
 
 export function pushMessage(channel, message) {
-  const chanObj = waitForMessage.get(channel)
-  if (chanObj != null) {
-    const toBeCompleted = [...chanObj.perm, ...chanObj.once]
-    chanObj.once = []
-    for (let cb of toBeCompleted) {
-      if (typeof cb !== 'function') {
-        console.error('cb is not a fn', cb)
-        throw new Error('cb is not a fn')
-      }
-      cb(message)
-    }
+  const queue = queues.get(channel)
+  queue.push(message)
+  for (let listener of messageListeners.get(channel)) {
+    listener(message)
   }
 }
 
-function initChannelObj(channel) {
-  if (waitForMessage.get(channel) == null) {
-    waitForMessage.set(channel, {once: [], perm: []})
+export function pushEnd(channel) {
+  const ended = channelEnded.get(channel)
+  if (ended) {
+    throw new Error('cannot end channel more than once')
   }
-}
-
-function disposeCb(channel, oncePerm, cb) {
-  const channelObj = waitForMessage.get(channel)
-  const index = channelObj[oncePerm].indexOf(cb)
-  if (index !== -1) {
-    console.log('!!! disposing cb')
-    channelObj[oncePerm].splice(index, 1)
+  channelEnded.set(channel, true)
+  for (let listener of returnListeners.get(channel)) {
+    listener()
   }
 }
 
 export function onMessage(channel, cb) {
-  initChannelObj(channel)
-  waitForMessage.get(channel).perm.push(cb)
-  return {dispose: () => disposeCb(channel, 'perm', cb)}
+  messageListeners.get(channel).add(cb)
+  const queue = queues.get(channel)
+  // TODO dispose properly
+  for (let val of queue.values()) {
+    cb(val)
+  }
+  return {dispose: () => messageListeners.get(channel).delete(cb)}
 }
 
 export function onceMessage(channel, cb) {
-  initChannelObj(channel)
-  waitForMessage.get(channel).once.push(cb)
-  return {dispose: () => disposeCb(channel, 'once', cb)}
+  const handle = onMessage(channel, (val) => {
+    handle.dispose()
+    cb(val)
+  })
 }
 
 export function onReturn(channel, cb) {
-  let lastValue
-  const handle = onMessage(channel, (message) => {
-    if (message === corroutineEndMessage) {
-      cb(lastValue)
-      handle.dispose()
-    } else {
-      lastValue = message
+  function _cb() {
+    const queue = queues.get(channel)
+    let val
+    if (!queue.empty()) {
+      val = queue.last()
     }
-  })
+    //console.log('onReturn', channel, val, queue.values())
+    cb(val)
+  }
+  if (channelEnded.get(channel)) {
+    _cb()
+  } else {
+    returnListeners.get(channel).add(_cb)
+  }
+  return {dispose: () => returnListeners.get(channel).delete(_cb)}
 }
 
 let idSeq = 0
 export function createChannel() {
-  return {
+  const channel = {
     type: channelType,
     id: idSeq++,
   }
+  queues.set(channel, Queue())
+  returnListeners.set(channel, new Set())
+  messageListeners.set(channel, new Set())
+  channelEnded.set(channel, false)
+  return channel
 }

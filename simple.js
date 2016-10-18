@@ -15,14 +15,13 @@ const handle1 = run(function*() {
     yield [delay, 500]
   }
   const val = yield [inc, 3, 4]
-  console.log('get val', val)
+  console.log('proc1 get val', val)
   yield [putMessage, val]
 })
 
 const handle2 = run(function*() {
-  yield [delay, 1000]
+  yield [delay, 10000]
   console.log('proc2 waiting')
   const proc1Res = yield [getReturn, handle1]
-  console.log('proc 1 res', proc1Res)
+  console.log('proc 2 res', proc1Res)
 })
-
