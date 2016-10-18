@@ -1,11 +1,11 @@
 import {runnableFromCb} from './utils'
 import {channelType, handleType} from './constants'
-import Queue from './queue'
+import {WaitingQueue} from './queue'
 
 const queues = new Map()
-const messageListeners = new Map()
 const returnListeners = new Map()
 const channelEnded = new Map()
+const iteratorFromChannel = new Map()
 
 function sanitizeChannel(channelOrHandle) {
   if (channelOrHandle.type === channelType) {
@@ -18,17 +18,45 @@ function sanitizeChannel(channelOrHandle) {
   }
 }
 
-export const getMessage = runnableFromCb((channel, cb) => {
+function dumpQueues() { // eslint-disable-line no-unused-vars
+  console.log('queues:')
+  for (let [chan, queue] of queues) {
+    console.log(chan.id, queue.values())
+  }
+}
+
+export const getMessage = runnableFromCb(([channel], cb) => {
   channel = sanitizeChannel(channel)
-  onceMessage(channel, (msg) => {cb(msg)})
+  iteratorFromChannel.get(channel).next((msg) => {
+    cb(null, msg)
+  })
 })
 
-export const putMessage = runnableFromCb((msg, cb, channel) => {
-  pushMessage(channel, msg)
+/*
+export const alts = (...args) => {
+  for (let runnable of args) {
+    handle = run(runnable)
+    handle.onReturn((val) => {
+      cb(
+    })
+  }
+  //
+  // yield [alts, [getMessage, channel1], [getMessage, channel2], [inc, 3, 4]]
+  //
+  //
+}
+*/
+
+export const putMessage = runnableFromCb(([msg], cb, channel) => {
+  if (channel != null) {
+    pushMessage(channel, msg)
+  } else {
+    console.warn('put message with null parrent channel called')
+  }
   cb()
 })
 
-export const getReturn = runnableFromCb((channel, cb) => {
+export const getReturn = runnableFromCb(([channel], cb) => {
   channel = sanitizeChannel(channel)
   onReturn(channel, (ret) => {cb(null, ret)})
 })
@@ -36,9 +64,6 @@ export const getReturn = runnableFromCb((channel, cb) => {
 export function pushMessage(channel, message) {
   const queue = queues.get(channel)
   queue.push(message)
-  for (let listener of messageListeners.get(channel)) {
-    listener(message)
-  }
 }
 
 export function pushEnd(channel) {
@@ -52,28 +77,8 @@ export function pushEnd(channel) {
   }
 }
 
-export function onMessage(channel, cb) {
-  messageListeners.get(channel).add(cb)
-  const queue = queues.get(channel)
-  let disposed = false
-  for (let val of queue.values()) {
-    if (disposed) break
-    cb(val)
-  }
-  return {dispose: () => {
-    disposed = true
-    messageListeners.get(channel).delete(cb)
-  }}
-}
-
-export function onceMessage(channel, cb) {
-  const handle = onMessage(channel, (val) => {
-    handle.dispose()
-    cb(val)
-  })
-}
-
 export function onReturn(channel, cb) {
+  channel = sanitizeChannel(channel)
 
   function _cb() {
     const queue = queues.get(channel)
@@ -83,14 +88,12 @@ export function onReturn(channel, cb) {
     }
     cb(val)
   }
-  let disposed = false
   if (channelEnded.get(channel)) {
-    if (!disposed) {_cb()}
+    _cb()
   } else {
     returnListeners.get(channel).add(_cb)
   }
   return {dispose: () => {
-    disposed = true
     returnListeners.get(channel).delete(_cb)
   }}
 }
@@ -101,9 +104,17 @@ export function createChannel() {
     type: channelType,
     id: idSeq++,
   }
-  queues.set(channel, Queue())
+
+  /*
+  onReturn(channel, () => {
+    iteratorFromChannel.get
+  })
+  */
+
+  const queue = new WaitingQueue()
+  queues.set(channel, queue)
+  iteratorFromChannel.set(channel, queue.iterator())
   returnListeners.set(channel, new Set())
-  messageListeners.set(channel, new Set())
   channelEnded.set(channel, false)
   return channel
 }

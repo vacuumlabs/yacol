@@ -57,3 +57,12 @@ Runable:
   returns handle
 
 
+features to be implemented:
+  - proper GC
+  - terminate
+  - error handling
+  - sliding queue
+  - more effective queue
+  - mock impl
+  - alts
+  - test zones

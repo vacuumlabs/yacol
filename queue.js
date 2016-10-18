@@ -1,35 +1,81 @@
-export default function Queue() {
-  const queue = []
+export class SimpleQueue {
 
-  function push(val) {
-    queue.push(val)
+  constructor() {
+    this.queue = []
   }
 
-  function pop() {
-    return queue.shift()
+  push = (val) => {
+    this.queue.push(val)
   }
 
-  function last() {
-    return queue[queue.length - 1]
+  pop = () => {
+    return this.queue.shift()
   }
 
-  function length() {
-    return queue.length
+  last = () => {
+    return this.queue[this.queue.length - 1]
   }
 
-  function values() {
-    return queue
+  length = () => {
+    return this.queue.length
   }
 
-  function empty() {
-    return length() === 0
+  values = () => {
+    return this.queue
   }
 
-  function toString() {
-    return 'mala srnka'
+  empty = () => {
+    return this.length() === 0
+  }
+}
+
+export class WaitingQueue extends SimpleQueue {
+
+  constructor() {
+    super()
+    this.iteratorData = new Map()
+    this.waiting = new Map()
   }
 
-  const result = {push, pop, last, length, values, empty, toString}
-  return result
+  push = (val) => {
+    // TODO debug this
+    // super.push(val)
+    this.queue.push(val)
+    this.notifyIterators()
+  }
+
+  notifyIterators() {
+    for (let [iterator] of this.waiting) {
+      this.trySatisfy(iterator)
+    }
+  }
+
+  trySatisfy(id) {
+    const index = this.iteratorData.get(id)
+    if (this.queue.length - 1 >= index) {
+      const cbQueue = this.waiting.get(id)
+      if (!cbQueue.empty()) {
+        const firstCb = cbQueue.pop()
+        this.iteratorData.set(id, index + 1)
+        firstCb(this.queue[index])
+      }
+    }
+  }
+
+  iterator = () => {
+
+    let id = {}
+
+    this.waiting.set(id, new SimpleQueue())
+    this.iteratorData.set(id, 0)
+
+    const next = (cb) => {
+      this.waiting.get(id).push(cb)
+      this.trySatisfy(id)
+    }
+
+    return {next}
+
+  }
 
 }

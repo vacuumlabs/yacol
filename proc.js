@@ -27,10 +27,13 @@ function zoneSet(key, val) {
 const runFromCb = (runnable, handle, parentHandle) => {
   const rfc = runnable[0]
   const args = [...runnable].splice(1)
-  rfc.cb(...args, (err, res) => {
+  rfc.cb(args, (err, res) => {
+    if (err != null) {
+      throw err
+    }
     pushMessage(handle.channel, res)
     pushEnd(handle.channel)
-  }, parentHandle.channel)
+  }, parentHandle == null ? null : parentHandle.channel)
 }
 
 const runCorroutine = (runnable, handle) => {
@@ -102,7 +105,12 @@ const run = (runnable, parentHandle = null) => {
 
   idToProc[id] = handle
 
-  if (typeof runnable === 'function') {
+  if (typeof runnable === 'object' && runnable.type === handleType) {
+    onReturn(runnable.channel, (msg) => {
+      pushMessage(handle.channel, msg)
+      pushEnd(handle.channel)
+    })
+  } else if (typeof runnable === 'function') {
     runCorroutine([runnable], handle)
   } else if (Array.isArray(runnable)) {
     const first = runnable[0]
