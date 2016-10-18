@@ -2,8 +2,9 @@ export function runnableFromCb(cb) {
   return ({type: 'RunnableFromCb', cb})
 }
 
-/*
-export function alts = runnableFromCb(...args)
+export function randomInt(n) {
+  return Math.random() * n
+}
 
-[alts, 1, 2, 3]
-*/
+export const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
+

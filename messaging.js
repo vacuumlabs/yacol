@@ -105,12 +105,6 @@ export function createChannel() {
     id: idSeq++,
   }
 
-  /*
-  onReturn(channel, () => {
-    iteratorFromChannel.get
-  })
-  */
-
   const queue = new WaitingQueue()
   queues.set(channel, queue)
   iteratorFromChannel.set(channel, queue.iterator())

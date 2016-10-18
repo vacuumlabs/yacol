@@ -1,5 +1,6 @@
 import {pushMessage, pushEnd, onReturn, createChannel} from './messaging'
 import {pidString, handleType} from './constants'
+import {runnableFromCb} from './utils'
 
 let idSeq = 0
 const idToProc = {}
@@ -132,6 +133,19 @@ const run = (runnable, parentHandle = null) => {
 
 const zone = {get: zoneGet, set: zoneSet}
 export {run, zone}
+
+export const alts = runnableFromCb((args, cb) => {
+  let returned = false
+  for (let i = 0; i < args.length; i++) {
+    let handle = run(args[i])
+    onReturn(handle, (val) => {
+      if (!returned) {
+        returned = true
+        cb(null, [i, val])
+      }
+    })
+  }
+})
 
 /*
 run(generatorFn)

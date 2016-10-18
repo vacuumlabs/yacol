@@ -1,9 +1,24 @@
-import {run} from './proc'
+import {run, alts, zone} from './proc'
 import {runnableFromCb} from './utils'
 import {putMessage, getMessage, getReturn, onReturn} from './messaging'
 
 const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
 
+const inc = function*(a, b) {
+  yield [delay, 100]
+  yield [putMessage, a + b]
+}
+
+run(function*() {
+  const res = yield run(function*() {
+    run([delay, 3000])
+    const res = yield [inc, 3, 4]
+    yield [putMessage, res]
+  })
+  console.log(res)
+})
+
+/*
 const inc = function*(a, b) {
   yield [delay, 100]
   yield [putMessage, a + b]
@@ -17,3 +32,4 @@ run(function*() {
   const val = yield [inc, 3, 4]
   console.log('val', val)
 })
+*/
