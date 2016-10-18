@@ -2,8 +2,6 @@ import {runnableFromCb} from './utils'
 import {channelType, handleType} from './constants'
 import Queue from './queue'
 
-//const waitForMessage = new Map()
-
 const queues = new Map()
 const messageListeners = new Map()
 const returnListeners = new Map()
@@ -57,11 +55,15 @@ export function pushEnd(channel) {
 export function onMessage(channel, cb) {
   messageListeners.get(channel).add(cb)
   const queue = queues.get(channel)
-  // TODO dispose properly
+  let disposed = false
   for (let val of queue.values()) {
+    if (disposed) break
     cb(val)
   }
-  return {dispose: () => messageListeners.get(channel).delete(cb)}
+  return {dispose: () => {
+    disposed = true
+    messageListeners.get(channel).delete(cb)
+  }}
 }
 
 export function onceMessage(channel, cb) {
@@ -72,21 +74,25 @@ export function onceMessage(channel, cb) {
 }
 
 export function onReturn(channel, cb) {
+
   function _cb() {
     const queue = queues.get(channel)
     let val
     if (!queue.empty()) {
       val = queue.last()
     }
-    //console.log('onReturn', channel, val, queue.values())
     cb(val)
   }
+  let disposed = false
   if (channelEnded.get(channel)) {
-    _cb()
+    if (!disposed) {_cb()}
   } else {
     returnListeners.get(channel).add(_cb)
   }
-  return {dispose: () => returnListeners.get(channel).delete(_cb)}
+  return {dispose: () => {
+    disposed = true
+    returnListeners.get(channel).delete(_cb)
+  }}
 }
 
 let idSeq = 0
