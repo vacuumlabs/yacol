@@ -7,7 +7,7 @@ const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
 
 const inc = function*(a, b) {
   yield [delay, 100]
-  yield [putMessage, a + b]
+  return a + b
 }
 
 const getTime = () => (new Date()).getTime()
@@ -26,11 +26,13 @@ beforeEach(resetTimer)
 
 describe('basics', () => {
 
-  it('can await handle', () => {
+  it('can await handle', (done) => {
     run(function*() {
       const res = yield run([inc, 1, 2])
-      timeApprox(100)
+      yield [delay, 100]
+      timeApprox(200)
       assert.equal(res, 3)
+      done()
     })
   })
 
@@ -38,6 +40,17 @@ describe('basics', () => {
     const handle = run([delay, 100])
     onReturn(handle, () => {
       timeApprox(100)
+      done()
+    })
+  })
+
+  it('last message acts as a return value', (done) => {
+    run(function*() {
+      const res = yield run(function*() {
+        const res = yield [inc, 1, 2]
+        return res
+      })
+      assert.equal(res, 3)
       done()
     })
   })
@@ -63,8 +76,8 @@ describe('basics', () => {
     const handle1 = run(function*() {
       yield [delay, 100]
       const val = yield [inc, 3, 4]
-      yield [putMessage, val]
       here1 = true
+      return val
     })
 
     const handle2 = run(function*() {

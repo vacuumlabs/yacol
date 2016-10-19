@@ -59,7 +59,6 @@ Runable:
 
 features to be implemented:
   - proper GC
-  - terminate
   - error handling
   - sliding queue
   - more effective queue
@@ -68,3 +67,4 @@ features to be implemented:
 Done:
   - alts
   - test zones
+  - terminate

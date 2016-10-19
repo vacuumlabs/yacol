@@ -51,6 +51,11 @@ const runCorroutine = (runnable, handle) => {
   }
 
   function step(val) {
+    //_step(val)
+    setTimeout(() => _step(val), 0)
+  }
+
+  function _step(val) {
     let oldPid
     try {
       oldPid = global[pidString]
@@ -60,6 +65,9 @@ const runCorroutine = (runnable, handle) => {
         const myZone = zoneInfo[handle.id]
         if (myZone.done) {
           throw new Error('myZone.done was already set to true')
+        }
+        if (nxt.value !== undefined) {
+          pushMessage(handle.channel, nxt.value)
         }
         myZone.done = true
         tryEnd(handle.id)

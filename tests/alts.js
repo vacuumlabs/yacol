@@ -6,7 +6,7 @@ import {assert} from 'chai'
 
 export const inc = function*(wait, a, b) {
   yield [delay, wait]
-  yield [putMessage, a + b]
+  return a + b
 }
 
 describe('alts', () => {
