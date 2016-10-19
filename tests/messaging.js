@@ -1,37 +1,38 @@
 import {run} from '../proc'
-import {runnableFromCb} from '../utils'
+import {runnableFromCb, randomInt} from '../utils'
 import {putMessage, getMessage} from '../messaging'
 import {assert} from 'chai'
 
 const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
 
-function randomDelay() {
-  return Math.random() * 100
-}
-
 describe('messaging', () => {
 
-  for (let rep = 0; rep < 10; rep++) {
+  for (let factor of [0.2, 0.5, 1, 1.5, 2]) {
+
     it('sends and receive messages ', (done) => {
+
+      const rep = 7
+      const baseWait = 50
 
       const handle1 = run(function*() {
         for (let i = 0; i < rep; i++) {
-          yield [delay, randomDelay()]
+          yield [delay, randomInt(baseWait * factor)]
           yield [putMessage, i]
+        }
+      })
+
+      const handle2 = run(function*() {
+        for (let i = 0; i < rep; i++) {
+          yield [delay, randomInt(baseWait)]
+          const msg = yield [getMessage, handle1]
+          assert.equal(msg, i)
         }
       })
 
       run(function*() {
         yield handle1
+        yield handle2
         done()
-      })
-
-      run(function*() {
-        for (let i = 0; i < rep; i++) {
-          yield [delay, randomDelay()]
-          const msg = yield [getMessage, handle1]
-          assert.equal(msg, i)
-        }
       })
     })
   }
