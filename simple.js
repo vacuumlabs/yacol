@@ -9,6 +9,17 @@ const inc = function*(a, b) {
   yield [putMessage, a + b]
 }
 
+/*
+run(function*() {
+  for (let i = 0; i < 3; i++) {
+    console.log('here', i)
+    yield [delay, 100]
+  }
+  const val = yield [inc, 3, 4]
+  console.log('res', val)
+})
+*/
+
 run(function*() {
   const res = yield run(function*() {
     run([delay, 3000])

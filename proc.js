@@ -57,7 +57,12 @@ const runCorroutine = (runnable, handle) => {
       global[pidString] = handle.id
       let nxt = safeNext(gen, val)
       if (nxt.done) {
-        pushEnd(handle.channel)
+        const myZone = zoneInfo[handle.id]
+        if (myZone.done) {
+          throw new Error('myZone.done was already set to true')
+        }
+        myZone.done = true
+        tryEnd(handle.id)
       } else {
         nxt = nxt.value
         let childHandle = run(nxt, handle)
@@ -70,6 +75,22 @@ const runCorroutine = (runnable, handle) => {
     }
   }
   step(null)
+}
+
+function changeProcCnt(id, val) {
+  if (id != null) {
+    zoneInfo[id].pendingSubProc += val
+  }
+}
+
+function tryEnd(id) {
+  if (id != null) {
+    if (id != null && zoneInfo[id].pendingSubProc === 0) {
+      if (zoneInfo[id].done) {
+        pushEnd(idToProc[id].channel)
+      }
+    }
+  }
 }
 
 const run = (runnable, parentHandle = null) => {
@@ -86,14 +107,19 @@ const run = (runnable, parentHandle = null) => {
       parent: null,
       parentId: null,
       parentZone: null,
+      pendingSubProc: 0,
+      done: false,
     }
   } else {
     myZone = {
       parent: idToProc[parentId],
       parentId,
       parentZone: zoneInfo[parentId],
+      pendingSubProc: 0,
+      done: false,
     }
   }
+
 
   myZone.public = new Map()
   zoneInfo[id] = myZone
@@ -106,6 +132,13 @@ const run = (runnable, parentHandle = null) => {
 
   idToProc[id] = handle
 
+  changeProcCnt(parentId, 1)
+  onReturn(handle, () => {
+    changeProcCnt(parentId, -1)
+    tryEnd(parentId)
+  })
+
+
   if (typeof runnable === 'object' && runnable.type === handleType) {
     onReturn(runnable.channel, (msg) => {
       pushMessage(handle.channel, msg)
@@ -116,7 +149,7 @@ const run = (runnable, parentHandle = null) => {
   } else if (Array.isArray(runnable)) {
     const first = runnable[0]
     if (typeof first === 'function') {
-      runCorroutine(runnable, handle)
+      runCorroutine(runnable, handle, myZone)
     } else if (typeof first === 'object' && first.type === 'RunnableFromCb') {
       runFromCb(runnable, handle, parentHandle)
     } else {

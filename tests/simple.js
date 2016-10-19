@@ -58,31 +58,65 @@ describe('basics', () => {
 
   it('more-processes', (done) => {
 
+    let here1, here2, here3
+
     const handle1 = run(function*() {
       yield [delay, 100]
       const val = yield [inc, 3, 4]
       yield [putMessage, val]
+      here1 = true
     })
 
-    let here3
-
-    run(function*() {
+    const handle2 = run(function*() {
       yield [delay, 300]
       const proc1Res = yield [getReturn, handle1]
       timeApprox(300)
       assert.equal(proc1Res, 7)
-      assert.isOk(here3)
-      done()
+      here2 = true
     })
 
-    run(function*() {
+    const handle3 = run(function*() {
       const proc1Res = yield [getReturn, handle1]
       timeApprox(200)
       assert.equal(proc1Res, 7)
       here3 = true
+    })
+
+    run(function*() {
+      yield handle1
+      yield handle2
+      yield handle3
+      assert.isOk(here1 && here2 && here3)
       done()
     })
   })
+
+  it('waits', (done) => {
+    run(function*() {
+      yield run(function*() {
+        run([delay, 200])
+        yield [delay, 100]
+      })
+      timeApprox(200)
+      done()
+    })
+  })
+
+  it('waits-nested', (done) => {
+    run(function*() {
+      yield run(function*() {
+        run(function*() {
+          run(function*() {
+            run([delay, 200])
+          })
+        })
+        yield [delay, 100]
+      })
+      timeApprox(200)
+      done()
+    })
+  })
+
 })
 
 
