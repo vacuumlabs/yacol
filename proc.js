@@ -30,6 +30,7 @@ const runFromCb = (runnable, handle, parentHandle) => {
   const args = [...runnable].splice(1)
   rfc.cb(args, (err, res) => {
     if (err != null) {
+      console.error('error caught in runFromCb')
       throw err
     }
     pushMessage(handle.channel, res)

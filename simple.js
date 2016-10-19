@@ -10,10 +10,34 @@ const inc = function*(a, b) {
   return a + b
 }
 
+let junk = []
+for (let i = 0; i < 1000000; i++) {
+  junk.push(`${i}`)
+}
+junk = junk.join('')
+
+const getLargeData = function*(n) {
+  //yield [putMessage, `${junk.join('')}${n}`]
+  yield [putMessage, [junk, n].join('')]
+}
+
 run(function*() {
-  const res = yield [inc, 1, 2]
-  console.log(res)
+  for (let i = 0; i < 10000; i++) {
+    const res = yield [getLargeData, i]
+    console.log(i, res.length)
+  }
 })
+
+/*
+run(function*() {
+  for (let i = 0; i < 3; i++) {
+    console.log('here', i)
+    yield [delay, 100]
+  }
+  const val = yield [inc, 3, 4]
+  console.log('res', val)
+})
+*/
 
 /*
 let junk = []

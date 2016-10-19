@@ -2,10 +2,10 @@ import {runnableFromCb} from './utils'
 import {channelType, handleType} from './constants'
 import {WaitingQueue} from './queue'
 
-const queues = new Map()
-const returnListeners = new Map()
-const channelEnded = new Map()
-const iteratorFromChannel = new Map()
+const queues = new WeakMap()
+const lastValues = new WeakMap()
+const returnListeners = new WeakMap()
+const channelEnded = new WeakMap()
 
 function sanitizeChannel(channelOrHandle) {
   if (channelOrHandle.type === channelType) {
@@ -27,10 +27,22 @@ function dumpQueues() { // eslint-disable-line no-unused-vars
 
 export const getMessage = runnableFromCb(([channel], cb) => {
   channel = sanitizeChannel(channel)
+  const queue = queues.get(channel)
+  const lastValue = lastValues.get(channel)
+  queue.next(lastValue, (val, nextElem) => {
+    lastValues.set(channel, nextElem)
+    cb(null, val)
+  })
+})
+
+/*
+export const getMessage = runnableFromCb(([channel], cb) => {
+  channel = sanitizeChannel(channel)
   iteratorFromChannel.get(channel).next((msg) => {
     cb(null, msg)
   })
 })
+*/
 
 /*
 export const alts = (...args) => {
@@ -107,8 +119,8 @@ export function createChannel() {
 
   const queue = new WaitingQueue()
   queues.set(channel, queue)
-  iteratorFromChannel.set(channel, queue.iterator())
   returnListeners.set(channel, new Set())
   channelEnded.set(channel, false)
+  lastValues.set(channel, null)
   return channel
 }

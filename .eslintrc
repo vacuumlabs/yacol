@@ -169,6 +169,7 @@
     "Promise": true,
     "Map": true,
     "Set": true,
+    "WeakMap": true,
   },
   "ecmaFeatures": {
     "jsx": true

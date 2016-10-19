@@ -33,7 +33,6 @@ export class WaitingQueue extends SimpleQueue {
 
   constructor() {
     super()
-    this.iteratorData = new Map()
     this.waiting = new Map()
   }
 
@@ -41,41 +40,28 @@ export class WaitingQueue extends SimpleQueue {
     // TODO debug this
     // super.push(val)
     this.queue.push(val)
-    this.notifyIterators()
+    this.trySatisfy()
   }
 
-  notifyIterators() {
-    for (let [iterator] of this.waiting) {
-      this.trySatisfy(iterator)
-    }
+  next = (lastValue, cb) => {
+    this.waiting.set(cb, lastValue)
+    this.trySatisfy()
   }
 
-  trySatisfy(id) {
-    const index = this.iteratorData.get(id)
-    if (this.queue.length - 1 >= index) {
-      const cbQueue = this.waiting.get(id)
-      if (!cbQueue.empty()) {
-        const firstCb = cbQueue.pop()
-        this.iteratorData.set(id, index + 1)
-        firstCb(this.queue[index])
+  trySatisfy = () => {
+    const satisfied = new Set()
+    for (let [cb, lastValue] of this.waiting) {
+      if (lastValue == null) {
+        lastValue = 0
+      }
+      if (this.queue.length - 1 >= lastValue) {
+        cb(this.queue[lastValue], lastValue + 1)
+        satisfied.add(cb)
       }
     }
-  }
-
-  iterator = () => {
-
-    let id = {}
-
-    this.waiting.set(id, new SimpleQueue())
-    this.iteratorData.set(id, 0)
-
-    const next = (cb) => {
-      this.waiting.get(id).push(cb)
-      this.trySatisfy(id)
+    for (let cb of satisfied) {
+      this.waiting.delete(cb)
     }
-
-    return {next}
-
   }
 
 }
