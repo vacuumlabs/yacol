@@ -1,6 +1,6 @@
 import {run} from '../proc'
 import {runnableFromCb} from '../utils'
-import {putMessage, getReturn, onReturn} from '../messaging'
+import {getReturn, onReturn} from '../messaging'
 import {assert} from 'chai'
 
 const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))

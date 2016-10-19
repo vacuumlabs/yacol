@@ -18,11 +18,13 @@ junk = junk.join('')
 
 const getLargeData = function*(n) {
   //yield [putMessage, `${junk.join('')}${n}`]
-  yield [putMessage, [junk, n].join('')]
+  for (let i = 0; i < 10; i++) {
+    yield [putMessage, [junk, n, i].join('')]
+  }
 }
 
 run(function*() {
-  for (let i = 0; i < 10000; i++) {
+  for (let i = 0; i < 100; i++) {
     const res = yield [getLargeData, i]
     console.log(i, res.length)
   }
