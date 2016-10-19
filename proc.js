@@ -3,11 +3,10 @@ import {pidString, handleType} from './constants'
 import {runnableFromCb} from './utils'
 
 let idSeq = 0
-const idToProc = {}
-const zoneInfo = {}
+const zoneInfo = new WeakMap()
 
 function zoneGet(key) {
-  let zone = zoneInfo[global[pidString]]
+  let zone = zoneInfo.get(global[pidString])
   while (true) {
     if (zone.public.has(key)) {
       return zone.public.get(key)
@@ -21,7 +20,7 @@ function zoneGet(key) {
 }
 
 function zoneSet(key, val) {
-  const zone = zoneInfo[global[pidString]]
+  const zone = zoneInfo.get(global[pidString])
   zone.public.set(key, val)
 }
 
@@ -60,10 +59,10 @@ const runCorroutine = (runnable, handle) => {
     let oldPid
     try {
       oldPid = global[pidString]
-      global[pidString] = handle.id
+      global[pidString] = handle
       let nxt = safeNext(gen, val)
       if (nxt.done) {
-        const myZone = zoneInfo[handle.id]
+        const myZone = zoneInfo.get(handle)
         if (myZone.done) {
           throw new Error('myZone.done was already set to true')
         }
@@ -71,7 +70,7 @@ const runCorroutine = (runnable, handle) => {
           pushMessage(handle.channel, nxt.value)
         }
         myZone.done = true
-        tryEnd(handle.id)
+        tryEnd(handle)
       } else {
         nxt = nxt.value
         let childHandle = run(nxt, handle)
@@ -86,52 +85,48 @@ const runCorroutine = (runnable, handle) => {
   step(null)
 }
 
-function changeProcCnt(id, val) {
-  if (id != null) {
-    zoneInfo[id].pendingSubProc += val
+function changeProcCnt(handle, val) {
+  if (handle != null) {
+    zoneInfo.get(handle).pendingSubProc += val
   }
 }
 
-function tryEnd(id) {
-  if (id != null) {
-    if (id != null && zoneInfo[id].pendingSubProc === 0) {
-      if (zoneInfo[id].done) {
-        pushEnd(idToProc[id].channel)
+function tryEnd(handle) {
+  if (handle != null) {
+    if (handle != null && zoneInfo.get(handle).pendingSubProc === 0) {
+      if (zoneInfo.get(handle).done) {
+        pushEnd(handle.channel)
       }
     }
   }
 }
 
-const run = (runnable, parentHandle = null) => {
+const run = (runnable) => {
   let id = `${idSeq++}`
 
   let channel = createChannel()
 
-  const parentId = global[pidString]
+  const parentHandle = global[pidString]
 
   let myZone
-  if (parentId == null) {
+  if (parentHandle == null) {
     // creating main process
     myZone = {
       parent: null,
-      parentId: null,
       parentZone: null,
       pendingSubProc: 0,
       done: false,
     }
   } else {
     myZone = {
-      parent: idToProc[parentId],
-      parentId,
-      parentZone: zoneInfo[parentId],
+      parent: parentHandle,
+      parentZone: zoneInfo.get(parentHandle),
       pendingSubProc: 0,
       done: false,
     }
   }
 
-
   myZone.public = new Map()
-  zoneInfo[id] = myZone
 
   const handle = {
     type: handleType,
@@ -139,12 +134,12 @@ const run = (runnable, parentHandle = null) => {
     channel,
   }
 
-  idToProc[id] = handle
+  zoneInfo.set(handle, myZone)
 
-  changeProcCnt(parentId, 1)
+  changeProcCnt(parentHandle, 1)
   onReturn(handle, () => {
-    changeProcCnt(parentId, -1)
-    tryEnd(parentId)
+    changeProcCnt(parentHandle, -1)
+    tryEnd(parentHandle)
   })
 
 
