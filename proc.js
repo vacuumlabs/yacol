@@ -41,6 +41,7 @@ const runCorroutine = (runnable, handle) => {
 
   const gen = runnable[0].apply(null, [...runnable].splice(1))
 
+  /*
   function safeNext(iter, val) {
     try {
       const res = iter.next(val)
@@ -49,38 +50,47 @@ const runCorroutine = (runnable, handle) => {
       throw e
     }
   }
+  */
+
+  function withPid(what) {
+    let oldPid = global[pidString]
+    global[pidString] = handle
+    what()
+    global[pidString] = oldPid
+  }
 
   function step(val) {
-    //_step(val)
     setTimeout(() => _step(val), 0)
   }
 
   function _step(val) {
-    let oldPid
-    try {
-      oldPid = global[pidString]
-      global[pidString] = handle
-      let nxt = safeNext(gen, val)
-      if (nxt.done) {
-        const myZone = zoneInfo.get(handle)
-        if (myZone.done) {
-          throw new Error('myZone.done was already set to true')
-        }
-        if (nxt.value !== undefined) {
-          pushMessage(handle.channel, nxt.value)
-        }
-        myZone.done = true
-        tryEnd(handle)
-      } else {
-        nxt = nxt.value
-        let childHandle = run(nxt, handle)
-        onReturn(childHandle.channel, (ret) => {
-          step(ret)
-        })
+    withPid(() => {
+      let nxt
+      try {
+        nxt = gen.next(val)
+      } catch (e) {
+        throw e
       }
-    } finally {
-      global[pidString] = oldPid
-    }
+      if (nxt != null) {
+        if (nxt.done) {
+          const myZone = zoneInfo.get(handle)
+          if (myZone.done) {
+            throw new Error('myZone.done was already set to true')
+          }
+          if (nxt.value !== undefined) {
+            pushMessage(handle.channel, nxt.value)
+          }
+          myZone.done = true
+          tryEnd(handle)
+        } else {
+          nxt = nxt.value
+          let childHandle = run(nxt, handle)
+          onReturn(childHandle.channel, (ret) => {
+            step(ret)
+          })
+        }
+      }
+    })
   }
   step(null)
 }
@@ -101,6 +111,7 @@ function tryEnd(handle) {
   }
 }
 
+// implementation of run
 const run = (runnable) => {
   let id = `${idSeq++}`
 
@@ -116,6 +127,7 @@ const run = (runnable) => {
       parentZone: null,
       pendingSubProc: 0,
       done: false,
+      error: false,
     }
   } else {
     myZone = {
@@ -123,6 +135,7 @@ const run = (runnable) => {
       parentZone: zoneInfo.get(parentHandle),
       pendingSubProc: 0,
       done: false,
+      error: false,
     }
   }
 

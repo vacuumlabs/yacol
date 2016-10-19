@@ -58,12 +58,12 @@ Runable:
 
 
 features to be implemented:
-  - proper GC
   - error handling
   - sliding queue
   - more effective queue
   - mock impl
 Done:
+  - proper GC
   - alts
   - test zones
   - terminate
