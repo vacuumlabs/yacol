@@ -3,10 +3,9 @@ import {pidString, handleType} from './constants'
 import {runnableFromCb} from './utils'
 
 let idSeq = 0
-const zoneInfo = new WeakMap()
 
 function zoneGet(key) {
-  let zone = zoneInfo.get(global[pidString])
+  let zone = global[pidString].zone
   while (true) {
     if (zone.public.has(key)) {
       return zone.public.get(key)
@@ -20,7 +19,7 @@ function zoneGet(key) {
 }
 
 function zoneSet(key, val) {
-  const zone = zoneInfo.get(global[pidString])
+  const zone = global[pidString].zone
   zone.public.set(key, val)
 }
 
@@ -64,7 +63,7 @@ const runCorroutine = (runnable, handle) => {
     let processed = false
     if (handler != null) {
       try {
-        handler(error)
+        handler(e)
         processed = true
       } catch (errorCaught) {
         e = errorCaught
@@ -85,12 +84,12 @@ const runCorroutine = (runnable, handle) => {
 
   function _step(val) {
     withPid(() => {
-      const myZone = zoneInfo.get(handle)
+      const myZone = handle.zone
       let nxt
       try {
         nxt = gen.next(val)
       } catch (e) {
-        handleError(e)
+        //handleError(e)
         throw e
       }
       if (nxt != null) {
@@ -118,14 +117,14 @@ const runCorroutine = (runnable, handle) => {
 
 function changeProcCnt(handle, val) {
   if (handle != null) {
-    zoneInfo.get(handle).pendingSubProc += val
+    handle.zone.pendingSubProc += val
   }
 }
 
 function tryEnd(handle) {
   if (handle != null) {
-    if (handle != null && zoneInfo.get(handle).pendingSubProc === 0) {
-      if (zoneInfo.get(handle).done) {
+    if (handle != null && handle.zone.pendingSubProc === 0) {
+      if (handle.zone.done) {
         pushEnd(handle.channel)
       }
     }
@@ -139,6 +138,7 @@ const run = (runnable, options = {}) => {
 
   let myZone = {
     options,
+    public: new Map(),
     parent: null,
     parentZone: null,
     pendingSubProc: 0,
@@ -150,26 +150,22 @@ const run = (runnable, options = {}) => {
   if (parentHandle != null) {
     Object.assign(myZone, {
       parent: parentHandle,
-      parentZone: zoneInfo.get(parentHandle),
+      parentZone: parentHandle.zone,
     })
   }
-
-  myZone.public = new Map()
 
   const handle = {
     type: handleType,
     id,
     channel,
+    zone: myZone,
   }
-
-  zoneInfo.set(handle, myZone)
 
   changeProcCnt(parentHandle, 1)
   onReturn(handle, () => {
     changeProcCnt(parentHandle, -1)
     tryEnd(parentHandle)
   })
-
 
   if (typeof runnable === 'object' && runnable.type === handleType) {
     onReturn(runnable.channel, (msg) => {
