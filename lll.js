@@ -62,6 +62,8 @@ features to be implemented:
   - sliding queue
   - more effective queue
   - mock impl
+  - alts done better
+  - __private__
 Done:
   - proper GC
   - alts

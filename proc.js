@@ -104,7 +104,10 @@ const runCorroutine = (runnable, handle) => {
         } else {
           nxt = nxt.value
           let childHandle = run(nxt, handle)
-          onReturn(childHandle.channel, (ret) => {
+          onReturn(childHandle.channel, (err, ret) => {
+            if (err != null) {
+              throw err
+            }
             step(ret)
           })
         }
@@ -163,13 +166,14 @@ const run = (runnable, options = {}) => {
   channel.handle = handle
 
   changeProcCnt(parentHandle, 1)
-  onReturn(handle, () => {
+  onReturn(handle, (err, res) => {
     changeProcCnt(parentHandle, -1)
     tryEnd(parentHandle)
   })
 
   if (typeof runnable === 'object' && runnable.type === handleType) {
-    onReturn(runnable.channel, (msg) => {
+    onReturn(runnable.channel, (err, msg) => {
+      // TODO handle err
       pushMessage(handle.channel, msg)
       pushEnd(handle.channel)
     })
@@ -200,10 +204,10 @@ export const alts = runnableFromCb((args, cb) => {
   let returned = false
   for (let i = 0; i < args.length; i++) {
     let handle = run(args[i])
-    onReturn(handle, (val) => {
+    onReturn(handle, (err, val) => {
       if (!returned) {
         returned = true
-        cb(null, [i, val])
+        cb(err, [i, val])
       }
     })
   }

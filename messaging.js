@@ -49,7 +49,7 @@ export const putMessage = runnableFromCb(([msg], cb, channel) => {
 
 export const getReturn = runnableFromCb(([channel], cb) => {
   channel = sanitizeChannel(channel)
-  onReturn(channel, (ret) => {cb(null, ret)})
+  onReturn(channel, (err, ret) => {cb(err, ret)})
 })
 
 export function pushMessage(channel, message) {
@@ -67,37 +67,21 @@ export function pushEnd(channel) {
   }
 }
 
-export function onReturnSafe(channel, cb) {
-  channel = sanitizeChannel(channel)
-
-  function _cb() {
-    const queue = channel.queue
-    let val
-    if (!queue.empty()) {
-      val = queue.last()
-    }
-    cb(val)
-  }
-  if (channel.ended) {
-    _cb()
-  } else {
-    channel.returnListeners.add(_cb)
-  }
-  return {dispose: () => {
-    channel.returnListeners.delete(_cb)
-  }}
-}
-
 export function onReturn(channel, cb) {
   channel = sanitizeChannel(channel)
 
   function _cb() {
     const queue = channel.queue
-    let val
-    if (!queue.empty()) {
-      val = queue.last()
+    if (channel.handle && channel.handle.error) {
+      console.log('nununu')
+      cb(channel.handle.error)
+    } else {
+      let val
+      if (!queue.empty()) {
+        val = queue.last()
+      }
+      cb(null, val)
     }
-    cb(val)
   }
   if (channel.ended) {
     _cb()

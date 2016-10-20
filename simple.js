@@ -17,9 +17,9 @@ run(function*() {
   }
   const val = yield [inc, 3, 4]
   console.log('res', val)
-},
-{onError: (err) => {}}
-)
+})
+
+//{onError: (err) => {}})
 
 /*
 let junk = []
