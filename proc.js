@@ -70,34 +70,8 @@ function handleError(e, handle) {
   }
 }
 
-const isRunnable(sth) {
-  return (sth.type === handleType) || (sth.type === runnableFromFunction)
-}
-
-const runCorroutineRecursive = (runnable, handle) => {
-  const args = runnable.slice(1)
-  const realArgs = new Array(args.length)
-  run(function*() { //eslint-disable-line no-use-before-define
-    for (let i = 0; i < args.length; i++) {
-      if (args[i].type === handleType) {
-        realArgs[i] = yield args[i]
-      }
-    }
-    const res = yield run([runnable[0], ...realArgs]) //eslint-disable-line no-use-before-define
-    pushMessage(handle.channel, res)
-    handle.locallyDone = true
-    tryEnd(handle)
-  })
-}
 
 const runCorroutine = (runnable, handle) => {
-
-  const args = runnable.slice(1)
-  for (let i = 0; i < args.length; i++) {
-    if (args[i].type === handleType) {
-      return runCorroutineRecursive(runnable, handle)
-    }
-  }
 
   const gen = runnable[0].apply(null, runnable.slice(1))
 
@@ -170,8 +144,49 @@ function tryEnd(handle) {
   }
 }
 
+function argIsRunnable(sth) {
+  return (sth.type === handleType) ||
+    (sth.type === runnableFromFunctionType) ||
+    (typeof sth === 'function' && sth.constructor.name === 'GeneratorFunction') ||
+    (Array.isArray(sth) && argIsRunnable(sth[0]))
+}
+
+const runRecursive = (runnable) => {
+  const args = runnable.slice(1)
+  const realArgs = new Array(args.length)
+  return run(function*() { //eslint-disable-line no-use-before-define
+    for (let i = 0; i < args.length; i++) {
+      if (argIsRunnable(args[i]) && args[i].type !== handleType) {
+        args[i] = runRec(args[i])
+      }
+    }
+    for (let i = 0; i < args.length; i++) {
+      if (args[i].type === handleType) {
+        realArgs[i] = yield run(args[i])
+      } else {
+        realArgs[i] = args[i]
+      }
+    }
+    const res = yield run([runnable[0], ...realArgs]) //eslint-disable-line no-use-before-define
+    return res
+  })
+}
+
+export const runRec = (runnable, options = {}) => {
+  if (Array.isArray(runnable)) {
+    const args = runnable.slice(1)
+    for (let arg of args) {
+      if (argIsRunnable(arg)) {
+        return runRecursive(runnable)
+      }
+    }
+  }
+  return run(runnable, options) //eslint-disable-line no-use-before-define
+}
+
 // implementation of run
 const run = (runnable, options = {}) => {
+
 
   let id = `${idSeq++}`
   let channel = createChannel()
@@ -215,9 +230,11 @@ const run = (runnable, options = {}) => {
     })
   } else if (typeof runnable === 'function') {
     runCorroutine([runnable], handle)
+  } else if (typeof runnable === 'object' && runnable.type === runnableFromFunctionType) {
+    runFromCb([runnable], handle, parentHandle)
   } else if (Array.isArray(runnable)) {
     const first = runnable[0]
-    if (typeof first === 'function') {
+    if (typeof first === 'function' && first.constructor.name === 'GeneratorFunction') {
       runCorroutine(runnable, handle, myZone)
     } else if (typeof first === 'object' && first.type === runnableFromFunctionType) {
       runFromCb(runnable, handle, parentHandle)
