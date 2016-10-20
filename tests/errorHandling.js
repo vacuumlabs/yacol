@@ -1,10 +1,10 @@
 /* eslint-disable prefer-arrow-callback */
 import {run} from '../proc'
-import {runnableFromCb} from '../utils'
+import {runnableFromFunction} from '../utils'
 import {getMessage} from '../messaging'
 import {assert} from 'chai'
 
-const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
+const delay = runnableFromFunction((time, cb) => setTimeout(() => cb(), time))
 
 describe('error handling', () => {
 
@@ -99,5 +99,7 @@ describe('error handling', () => {
       yield [getMessage, handle1]
     }, {onError: (e) => {assert.equal(e.message, 'yuck fou'); done()}})
   })
+
+  //yield = [tryWithValue, [getMessage, handle1], val]
 
 })

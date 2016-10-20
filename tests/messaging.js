@@ -1,9 +1,9 @@
 import {run} from '../proc'
-import {runnableFromCb, randomInt} from '../utils'
+import {runnableFromFunction, randomInt} from '../utils'
 import {putMessage, getMessage} from '../messaging'
 import {assert} from 'chai'
 
-const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
+const delay = runnableFromFunction((time, cb) => setTimeout(() => cb(), time))
 
 describe('messaging', () => {
 

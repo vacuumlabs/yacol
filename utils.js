@@ -1,7 +1,7 @@
-import {pidString} from './constants'
+import {pidString, runnableFromFunctionType} from './constants'
 
-export function runnableFromCb(cb) {
-  return ({type: 'RunnableFromCb', cb})
+export function runnableFromFunction(fn) {
+  return ({type: runnableFromFunctionType, cb: fn})
 }
 
 export function randomInt(n) {
@@ -12,5 +12,5 @@ export function getCurrentCoroutine() {
   return global[pidString]
 }
 
-export const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
+export const delay = runnableFromFunction((time, cb) => setTimeout(() => cb(), time))
 

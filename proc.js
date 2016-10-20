@@ -1,6 +1,6 @@
 import {pushMessage, pushEnd, onReturn, createChannel} from './messaging'
-import {pidString, handleType} from './constants'
-import {runnableFromCb} from './utils'
+import {pidString, handleType, runnableFromFunctionType} from './constants'
+import {runnableFromFunction} from './utils'
 
 let idSeq = 0
 
@@ -70,20 +70,36 @@ function handleError(e, handle) {
   }
 }
 
+const isRunnable(sth) {
+  return (sth.type === handleType) || (sth.type === runnableFromFunction)
+}
+
+const runCorroutineRecursive = (runnable, handle) => {
+  const args = runnable.slice(1)
+  const realArgs = new Array(args.length)
+  run(function*() { //eslint-disable-line no-use-before-define
+    for (let i = 0; i < args.length; i++) {
+      if (args[i].type === handleType) {
+        realArgs[i] = yield args[i]
+      }
+    }
+    const res = yield run([runnable[0], ...realArgs]) //eslint-disable-line no-use-before-define
+    pushMessage(handle.channel, res)
+    handle.locallyDone = true
+    tryEnd(handle)
+  })
+}
+
 const runCorroutine = (runnable, handle) => {
 
-  const gen = runnable[0].apply(null, [...runnable].splice(1))
-
-  /*
-  function safeNext(iter, val) {
-    try {
-      const res = iter.next(val)
-      return res
-    } catch (e) {
-      throw e
+  const args = runnable.slice(1)
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].type === handleType) {
+      return runCorroutineRecursive(runnable, handle)
     }
   }
-  */
+
+  const gen = runnable[0].apply(null, runnable.slice(1))
 
   function withPid(what) {
     let oldPid = global[pidString]
@@ -203,7 +219,7 @@ const run = (runnable, options = {}) => {
     const first = runnable[0]
     if (typeof first === 'function') {
       runCorroutine(runnable, handle, myZone)
-    } else if (typeof first === 'object' && first.type === 'RunnableFromCb') {
+    } else if (typeof first === 'object' && first.type === runnableFromFunctionType) {
       runFromCb(runnable, handle, parentHandle)
     } else {
       console.error(`unknown runnable (type: ${typeof first}),`, first)
@@ -220,7 +236,7 @@ const run = (runnable, options = {}) => {
 const zone = {get: zoneGet, set: zoneSet}
 export {run, zone}
 
-export const alts = runnableFromCb((args, cb) => {
+export const alts = runnableFromFunction((args, cb) => {
   let returned = false
   for (let i = 0; i < args.length; i++) {
     let handle = run(args[i])

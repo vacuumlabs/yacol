@@ -1,36 +1,10 @@
 
+yield [inc, run([inc, 3, 4]), run([inc, 1, 2])]
+yield [tryValue, run([getMessage, chan]), val]
 
-function* inc(x, y) {
-  yield [delay, 500]
-  return x + y
+const tryValue = function*() {
+
 }
-
-function* dummy(...args) {
-  yield [delay, 500]
-  return ['dummy', ...args]
-}
-
-run(function*(){
-
-  const val = yield promise
-  const val = yield [fn, arg1, arg2]
-  const val = yield run([fn, arg1, arg2])
-  proc = run([fn, arg1, arg2])
-  const val = yield proc
-
-  const val = yield run([patchedFn, arg1, arg2])
-
-  const msg = yield [getMessage, chan]
-
-
-}).catch((e) => {
-  return 4
-}).impl({
-  // if ListYieldable with 1th argument, it is replaced by this.
-  patchedFn: dummy,
-  fn: inc,
-
-})
 
 
 yieldables:
@@ -44,7 +18,7 @@ ListYieldable:
   - [builtinFn, ...args],
   - builtinFn
 
-runnableFromCb(cb)
+runnableFromFunction(cb)
   cb: (...args, cb)
 
   returns generatorFn (Runnable)
@@ -71,3 +45,5 @@ Done:
   - test zones
   - terminate
   - return value by return
+
+

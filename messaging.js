@@ -1,4 +1,4 @@
-import {runnableFromCb, getCurrentCoroutine} from './utils'
+import {runnableFromFunction, getCurrentCoroutine} from './utils'
 import {channelType, handleType} from './constants'
 import {WaitingQueue} from './queue'
 
@@ -50,7 +50,7 @@ const getMessageSafe_ = (handle, cb, errorValue = noErrorValue) => {
   }
 }
 
-export const getMessageSafe = runnableFromCb((handle, cb, errorValue = noErrorValue) => {
+export const getMessageSafe = runnableFromFunction((handle, cb, errorValue = noErrorValue) => {
   assertHandle(handle)
   if (errorValue === noErrorValue) {
     throw new Error('the \'errorValue\' arg of getMessageSafe cannot be null')
@@ -58,7 +58,7 @@ export const getMessageSafe = runnableFromCb((handle, cb, errorValue = noErrorVa
   getMessageSafe_(handle, cb, errorValue)
 })
 
-export const getMessage = runnableFromCb(([chanOrHandle], cb) => {
+export const getMessage = runnableFromFunction(([chanOrHandle], cb) => {
   if (chanOrHandle.type === channelType) {
     const channel = chanOrHandle
     const {queue, lastValue} = channel
