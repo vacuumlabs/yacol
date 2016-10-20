@@ -1,7 +1,7 @@
 /* eslint-disable prefer-arrow-callback */
 import {run} from '../proc'
 import {runnableFromCb} from '../utils'
-import {getReturn, onReturn} from '../messaging'
+import {getMessage} from '../messaging'
 import {assert} from 'chai'
 
 const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
@@ -20,7 +20,21 @@ describe('error handling', () => {
     })
   })
 
-  it('error caught is not propagated', (done) => {
+  it('error caught is not propagated 1', function(done) {
+    let here = false
+    run(function*() {
+      run(function*() {
+        throw new Error('yuck fou')
+      }, {onError: (e) => {}})
+      yield [delay, 10]
+    }, {onError: (e) => {here = true}})
+    setTimeout(() => {
+      assert.isNotOk(here)
+      done()
+    }, 100)
+  })
+
+  it('error caught is not propagated 2', (done) => {
     let here1 = false
     let here2 = false
     let here3 = false
@@ -74,6 +88,15 @@ describe('error handling', () => {
         throw new Error('yuck fou')
       }, {onError: (e) => {}})
       yield handle1
+    }, {onError: (e) => {assert.equal(e.message, 'yuck fou'); done()}})
+  })
+
+  it('Yielding getMessage on failed process propagates error', function(done) {
+    run(function*() {
+      const handle1 = run(function*() {
+        throw new Error('yuck fou')
+      }, {onError: (e) => {}})
+      yield [getMessage, handle1]
     }, {onError: (e) => {assert.equal(e.message, 'yuck fou'); done()}})
   })
 

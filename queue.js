@@ -46,6 +46,7 @@ export class WaitingQueue extends SimpleQueue {
   next = (lastValue, cb) => {
     this.waiting.set(cb, lastValue)
     this.trySatisfy()
+    return {dispose: () => this.waiting.delete(cb)}
   }
 
   trySatisfy = () => {
