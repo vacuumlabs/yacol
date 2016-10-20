@@ -1,6 +1,6 @@
 import {run} from '../proc'
 import {runnableFromCb} from '../utils'
-import {getReturn, onReturn} from '../messaging'
+import {onReturn} from '../messaging'
 import {assert} from 'chai'
 
 const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
@@ -82,14 +82,14 @@ describe('basics', () => {
 
     const handle2 = run(function*() {
       yield [delay, 300]
-      const proc1Res = yield [getReturn, handle1]
+      const proc1Res = yield handle1
       timeApprox(300)
       assert.equal(proc1Res, 7)
       here2 = true
     })
 
     const handle3 = run(function*() {
-      const proc1Res = yield [getReturn, handle1]
+      const proc1Res = yield handle1
       timeApprox(200)
       assert.equal(proc1Res, 7)
       here3 = true
@@ -131,23 +131,3 @@ describe('basics', () => {
   })
 
 })
-
-
-/*
-
-const handle1 = run(function*() {
-  for (let i = 0; i < 3; i++) {
-    yield [delay, 500]
-  }
-  const val = yield [inc, 3, 4]
-  console.log('proc1 get val', val)
-  yield [putMessage, val]
-})
-
-const handle2 = run(function*() {
-  yield [delay, 10000]
-  console.log('proc2 waiting')
-  const proc1Res = yield [getReturn, handle1]
-  console.log('proc 2 res', proc1Res)
-})
-*/

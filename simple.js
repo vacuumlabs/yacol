@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import {run, alts, zone} from './proc'
 import {runnableFromCb} from './utils'
-import {putMessage, getMessage, getReturn, onReturn} from './messaging'
+import {putMessage, getMessage, onReturn} from './messaging'
 
 const delay = runnableFromCb((time, cb) => setTimeout(() => cb(), time))
 
@@ -11,35 +11,19 @@ const inc = function*(a, b) {
 }
 
 run(function*() {
-  for (let i = 0; i < 3; i++) {
-    console.log('here', i)
-    yield [delay, 100]
-  }
-  const val = yield [inc, 3, 4]
-  console.log('res', val)
-})
+  const handle1 = run(function*() {
+    throw new Error('yuck fou')
+  }, {onError: (e) => {}})
+  yield [delay, 100]
+  //console.log(handle1)
 
-//{onError: (err) => {}})
+  const res = yield handle1
 
-/*
-let junk = []
-for (let i = 0; i < 1000000; i++) {
-  junk.push(`${i}`)
-}
-junk = junk.join('')
+  //console.log('res', res)
+}, {onError: (e) => {
+  console.log('tututu')
+}})
 
-const getLargeData = function*(n) {
-  //yield [putMessage, `${junk.join('')}${n}`]
-  yield [putMessage, [junk, n].join('')]
-}
-
-run(function*() {
-  for (let i = 0; i < 10000; i++) {
-    const res = yield [getLargeData, i]
-    console.log(i, res.length)
-  }
-})
-*/
 
 /*
 run(function*() {

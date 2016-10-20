@@ -28,12 +28,46 @@ const runFromCb = (runnable, handle, parentHandle) => {
   const args = [...runnable].splice(1)
   rfc.cb(args, (err, res) => {
     if (err != null) {
-      console.error('error caught in runFromCb')
-      throw err
+      handleError(err, handle)
     }
     pushMessage(handle.channel, res)
-    pushEnd(handle.channel)
+    pushEnd(handle)
   }, parentHandle == null ? null : parentHandle.channel)
+}
+
+function handleError(e, handle) {
+
+  // first set .error attr to all errorneous channels, only then pushEnd to them to prevent
+  // 'race conds'
+  const shouldPushEnd = []
+
+  function _handleError(e, handle) {
+    handle.error = e
+    shouldPushEnd.push(handle)
+    let handler = handle.options.onError
+    let processed = false
+    if (handler != null) {
+      try {
+        handler(e)
+        processed = true
+      } catch (errorCaught) {
+        e = errorCaught
+      }
+    }
+    if (!processed) {
+      if (handle.parent == null) {
+        // uncaught error on the top level
+        throw e
+      } else {
+        _handleError(e, handle.parent)
+      }
+    }
+  }
+
+  _handleError(e, handle)
+  for (let handle of shouldPushEnd) {
+    pushEnd(handle)
+  }
 }
 
 const runCorroutine = (runnable, handle) => {
@@ -58,57 +92,46 @@ const runCorroutine = (runnable, handle) => {
     global[pidString] = oldPid
   }
 
-  function handleError(e, myZone) {
-    let handler = myZone.options.onError
-    let processed = false
-    if (handler != null) {
-      try {
-        handler(e)
-        processed = true
-      } catch (errorCaught) {
-        e = errorCaught
-      }
-    }
-    if (processed) {
-
-    } else {
-      if (myZone.parentZone != null) {
-        handleError(e, myZone.parentZone)
-      }
-    }
-  }
 
   function step(val) {
     setTimeout(() => _step(val), 0)
   }
 
   function _step(val) {
+    if (handle.error != null) {
+      return
+    }
     withPid(() => {
       let nxt
       try {
         nxt = gen.next(val)
-      } catch (e) {
-        //handleError(e)
-        throw e
+      } catch (err) {
+        handleError(err, handle)
       }
       if (nxt != null) {
         if (nxt.done) {
-          if (handle.done) {
+          if (handle.locallyDone) {
             throw new Error('myZone.done was already set to true')
           }
           if (nxt.value !== undefined) {
             pushMessage(handle.channel, nxt.value)
           }
-          handle.done = true
+          handle.locallyDone = true
           tryEnd(handle)
         } else {
           nxt = nxt.value
           let childHandle = run(nxt, handle)
-          onReturn(childHandle.channel, (err, ret) => {
-            if (err != null) {
-              throw err
+          onReturn(childHandle, (err, ret) => {
+            if (err == null) {
+              step(ret)
+            } else {
+              // Error on subprocess may or may not cause crash of a current process.
+              // If the current process is still OK, but it tries to yield from crashed subprocess,
+              // the error occurs.
+              if (handle.error == null) {
+                handleError(err, handle)
+              }
             }
-            step(ret)
           })
         }
       }
@@ -125,16 +148,15 @@ function changeProcCnt(handle, val) {
 
 function tryEnd(handle) {
   if (handle != null) {
-    if (handle != null && handle.pendingSubProc === 0) {
-      if (handle.done) {
-        pushEnd(handle.channel)
-      }
+    if (handle.pendingSubProc === 0 && handle.locallyDone && handle.error == null) {
+      pushEnd(handle)
     }
   }
 }
 
 // implementation of run
 const run = (runnable, options = {}) => {
+
   let id = `${idSeq++}`
   let channel = createChannel()
 
@@ -147,7 +169,6 @@ const run = (runnable, options = {}) => {
   const parentHandle = global[pidString]
   if (parentHandle != null) {
     Object.assign(myZone, {
-      parent: parentHandle,
       parentZone: parentHandle.zone,
     })
   }
@@ -158,9 +179,12 @@ const run = (runnable, options = {}) => {
     channel,
     zone: myZone,
     pendingSubProc: 0,
-    done: false,
-    error: false,
+    locallyDone: false, // generator returned
+    done: false, // generator returned and everything terminated
+    error: null,
     options,
+    parent: parentHandle,
+    returnListeners: new Set(),
   }
 
   channel.handle = handle
@@ -172,10 +196,13 @@ const run = (runnable, options = {}) => {
   })
 
   if (typeof runnable === 'object' && runnable.type === handleType) {
-    onReturn(runnable.channel, (err, msg) => {
-      // TODO handle err
-      pushMessage(handle.channel, msg)
-      pushEnd(handle.channel)
+    onReturn(runnable, (err, msg) => {
+      if (err == null) {
+        pushMessage(handle.channel, msg)
+        pushEnd(handle)
+      } else {
+        handleError(err, handle)
+      }
     })
   } else if (typeof runnable === 'function') {
     runCorroutine([runnable], handle)

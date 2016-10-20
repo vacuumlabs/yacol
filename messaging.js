@@ -2,13 +2,6 @@ import {runnableFromCb} from './utils'
 import {channelType, handleType} from './constants'
 import {WaitingQueue} from './queue'
 
-/*
-const queues = new WeakMap()
-const lastValues = new WeakMap()
-const returnListeners = new WeakMap()
-const channelEnded = new WeakMap()
-*/
-
 function sanitizeChannel(channelOrHandle) {
   if (channelOrHandle.type === channelType) {
     return channelOrHandle
@@ -20,17 +13,20 @@ function sanitizeChannel(channelOrHandle) {
   }
 }
 
-/*
-function dumpQueues() { // eslint-disable-line no-unused-vars
-  console.log('queues:')
-  for (let [chan, queue] of queues) {
-    console.log(chan.id, queue.values())
+function assertChannel(channel) {
+  if (channel.type !== channelType) {
+    throw new Error('argument expected to be a channel')
   }
 }
-*/
 
-export const getMessage = runnableFromCb(([channel], cb) => {
-  channel = sanitizeChannel(channel)
+function assertHandle(handle) {
+  if (handle.type !== handleType) {
+    throw new Error('argument expected to be a handle')
+  }
+}
+
+export const getMessage = runnableFromCb(([chOrHan], cb) => {
+  const channel = sanitizeChannel(chOrHan)
   const {queue, lastValue} = channel
   queue.next(lastValue, (val, nextElem) => {
     channel.lastValue = nextElem
@@ -39,6 +35,7 @@ export const getMessage = runnableFromCb(([channel], cb) => {
 })
 
 export const putMessage = runnableFromCb(([msg], cb, channel) => {
+  assertChannel(channel)
   if (channel != null) {
     pushMessage(channel, msg)
   } else {
@@ -47,34 +44,31 @@ export const putMessage = runnableFromCb(([msg], cb, channel) => {
   cb()
 })
 
-export const getReturn = runnableFromCb(([channel], cb) => {
-  channel = sanitizeChannel(channel)
-  onReturn(channel, (err, ret) => {cb(err, ret)})
-})
-
 export function pushMessage(channel, message) {
+  assertChannel(channel)
   const queue = channel.queue
   queue.push(message)
 }
 
-export function pushEnd(channel) {
-  if (channel.ended) {
+export function pushEnd(handle) {
+  assertHandle(handle)
+  if (handle.done) {
     throw new Error('cannot end channel more than once')
   }
-  channel.ended = true
-  for (let listener of channel.returnListeners) {
+  handle.done = true
+  for (let listener of handle.returnListeners) {
     listener()
   }
 }
 
-export function onReturn(channel, cb) {
-  channel = sanitizeChannel(channel)
+export function onReturn(handle, cb) {
+  assertHandle(handle)
+  const channel = handle.channel
 
   function _cb() {
     const queue = channel.queue
-    if (channel.handle && channel.handle.error) {
-      console.log('nununu')
-      cb(channel.handle.error)
+    if (handle.error) {
+      cb(handle.error)
     } else {
       let val
       if (!queue.empty()) {
@@ -83,13 +77,13 @@ export function onReturn(channel, cb) {
       cb(null, val)
     }
   }
-  if (channel.ended) {
+  if (handle.done) {
     _cb()
   } else {
-    channel.returnListeners.add(_cb)
+    handle.returnListeners.add(_cb)
   }
   return {dispose: () => {
-    channel.returnListeners.delete(_cb)
+    handle.returnListeners.delete(_cb)
   }}
 }
 
@@ -97,8 +91,6 @@ export function createChannel() {
   return ({
     type: channelType,
     queue: new WaitingQueue(),
-    returnListeners: new Set(),
-    channelEnded: false,
     lastValue: null
   })
 }

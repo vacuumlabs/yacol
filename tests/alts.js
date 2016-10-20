@@ -1,6 +1,5 @@
 import {run, alts} from '../proc'
-import {runnableFromCb, randomInt, delay} from '../utils'
-import {putMessage, getReturn, onReturn} from '../messaging'
+import {randomInt, delay} from '../utils'
 import {assert} from 'chai'
 
 
