@@ -17,7 +17,7 @@ describe('messaging', () => {
       const handle1 = run(function*() {
         for (let i = 0; i < rep; i++) {
           yield [delay, randomInt(baseWait * factor)]
-          yield [putMessage, i]
+          putMessage(i)
         }
       })
 

@@ -1,4 +1,4 @@
-import {runnableFromCb} from './utils'
+import {runnableFromCb, getCurrentCoroutine} from './utils'
 import {channelType, handleType} from './constants'
 import {WaitingQueue} from './queue'
 
@@ -73,15 +73,9 @@ export const getMessage = runnableFromCb(([chanOrHandle], cb) => {
   }
 })
 
-export const putMessage = runnableFromCb(([msg], cb, channel) => {
-  assertChannel(channel)
-  if (channel != null) {
-    pushMessage(channel, msg)
-  } else {
-    console.warn('put message with null parrent channel called')
-  }
-  cb()
-})
+export const putMessage = (msg) => {
+  pushMessage(getCurrentCoroutine().channel, msg)
+}
 
 export function pushMessage(channel, message) {
   assertChannel(channel)

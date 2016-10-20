@@ -159,18 +159,11 @@ const run = (runnable, options = {}) => {
 
   let id = `${idSeq++}`
   let channel = createChannel()
+  const parentHandle = global[pidString]
 
   let myZone = {
     public: new Map(),
-    parent: null,
-    parentZone: null,
-  }
-
-  const parentHandle = global[pidString]
-  if (parentHandle != null) {
-    Object.assign(myZone, {
-      parentZone: parentHandle.zone,
-    })
+    parentZone: parentHandle == null ? null : parentHandle.zone
   }
 
   const handle = {
