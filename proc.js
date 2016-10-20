@@ -84,7 +84,6 @@ const runCorroutine = (runnable, handle) => {
 
   function _step(val) {
     withPid(() => {
-      const myZone = handle.zone
       let nxt
       try {
         nxt = gen.next(val)
@@ -94,13 +93,13 @@ const runCorroutine = (runnable, handle) => {
       }
       if (nxt != null) {
         if (nxt.done) {
-          if (myZone.done) {
+          if (handle.done) {
             throw new Error('myZone.done was already set to true')
           }
           if (nxt.value !== undefined) {
             pushMessage(handle.channel, nxt.value)
           }
-          myZone.done = true
+          handle.done = true
           tryEnd(handle)
         } else {
           nxt = nxt.value
@@ -117,14 +116,14 @@ const runCorroutine = (runnable, handle) => {
 
 function changeProcCnt(handle, val) {
   if (handle != null) {
-    handle.zone.pendingSubProc += val
+    handle.pendingSubProc += val
   }
 }
 
 function tryEnd(handle) {
   if (handle != null) {
-    if (handle != null && handle.zone.pendingSubProc === 0) {
-      if (handle.zone.done) {
+    if (handle != null && handle.pendingSubProc === 0) {
+      if (handle.done) {
         pushEnd(handle.channel)
       }
     }
@@ -137,13 +136,9 @@ const run = (runnable, options = {}) => {
   let channel = createChannel()
 
   let myZone = {
-    options,
     public: new Map(),
     parent: null,
     parentZone: null,
-    pendingSubProc: 0,
-    done: false,
-    error: false,
   }
 
   const parentHandle = global[pidString]
@@ -159,7 +154,13 @@ const run = (runnable, options = {}) => {
     id,
     channel,
     zone: myZone,
+    pendingSubProc: 0,
+    done: false,
+    error: false,
+    options,
   }
+
+  channel.handle = handle
 
   changeProcCnt(parentHandle, 1)
   onReturn(handle, () => {
@@ -207,13 +208,3 @@ export const alts = runnableFromCb((args, cb) => {
     })
   }
 })
-
-/*
-run(generatorFn)
-  - same as array, but no args
-run([generatorFn, ...args)
-  - run generator
-run(runnableFromCb)
-  -
-- returns handle
-*/
