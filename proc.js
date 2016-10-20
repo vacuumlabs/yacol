@@ -59,21 +59,42 @@ const runCorroutine = (runnable, handle) => {
     global[pidString] = oldPid
   }
 
+  function handleError(e, myZone) {
+    let handler = myZone.options.onError
+    let processed = false
+    if (handler != null) {
+      try {
+        handler(error)
+        processed = true
+      } catch (errorCaught) {
+        e = errorCaught
+      }
+    }
+    if (processed) {
+
+    } else {
+      if (myZone.parentZone != null) {
+        handleError(e, myZone.parentZone)
+      }
+    }
+  }
+
   function step(val) {
     setTimeout(() => _step(val), 0)
   }
 
   function _step(val) {
     withPid(() => {
+      const myZone = zoneInfo.get(handle)
       let nxt
       try {
         nxt = gen.next(val)
       } catch (e) {
+        handleError(e)
         throw e
       }
       if (nxt != null) {
         if (nxt.done) {
-          const myZone = zoneInfo.get(handle)
           if (myZone.done) {
             throw new Error('myZone.done was already set to true')
           }
@@ -112,31 +133,25 @@ function tryEnd(handle) {
 }
 
 // implementation of run
-const run = (runnable) => {
+const run = (runnable, options = {}) => {
   let id = `${idSeq++}`
-
   let channel = createChannel()
 
-  const parentHandle = global[pidString]
+  let myZone = {
+    options,
+    parent: null,
+    parentZone: null,
+    pendingSubProc: 0,
+    done: false,
+    error: false,
+  }
 
-  let myZone
-  if (parentHandle == null) {
-    // creating main process
-    myZone = {
-      parent: null,
-      parentZone: null,
-      pendingSubProc: 0,
-      done: false,
-      error: false,
-    }
-  } else {
-    myZone = {
+  const parentHandle = global[pidString]
+  if (parentHandle != null) {
+    Object.assign(myZone, {
       parent: parentHandle,
       parentZone: zoneInfo.get(parentHandle),
-      pendingSubProc: 0,
-      done: false,
-      error: false,
-    }
+    })
   }
 
   myZone.public = new Map()

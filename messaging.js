@@ -89,6 +89,27 @@ export function pushEnd(channel) {
   }
 }
 
+export function onReturnSafe(channel, cb) {
+  channel = sanitizeChannel(channel)
+
+  function _cb() {
+    const queue = queues.get(channel)
+    let val
+    if (!queue.empty()) {
+      val = queue.last()
+    }
+    cb(val)
+  }
+  if (channelEnded.get(channel)) {
+    _cb()
+  } else {
+    returnListeners.get(channel).add(_cb)
+  }
+  return {dispose: () => {
+    returnListeners.get(channel).delete(_cb)
+  }}
+}
+
 export function onReturn(channel, cb) {
   channel = sanitizeChannel(channel)
 
