@@ -15,8 +15,22 @@ function* world(req, res) {
   res.send('world')
 }
 
-register(app, '/hello', hello)
-register(app, '/world', world)
+function* middleware1(req, res, next) {
+  console.log('before req 1')
+  yield next
+  console.log('after req 1')
+}
+
+function* middleware2(req, res, next) {
+  console.log('before req 2')
+  yield next
+  console.log('after req 2')
+}
+
+register(app, 'use', '*', middleware1)
+register(app, 'use', '*', middleware2)
+register(app, 'get', '/hello', hello)
+register(app, 'get', '/world', world)
 
 run(function* () {
   run([runApp, app])
