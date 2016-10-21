@@ -66,7 +66,7 @@ function handleError(e, handle) {
 }
 
 
-const runCorroutine = (runnable, handle) => {
+const runCoroutine = (runnable, handle) => {
 
   const gen = runnable[0].apply(null, runnable.slice(1))
 
@@ -183,7 +183,7 @@ export const run = (runnable, options = {}) => {
       }
     })
   } else if (typeof runnable === 'function') {
-    runCorroutine([runnable], handle)
+    runCoroutine([runnable], handle)
   } else if (typeof runnable === 'object' &&
       typeof runnable.then === 'function' &&
       typeof runnable.then === 'function') {
@@ -193,7 +193,7 @@ export const run = (runnable, options = {}) => {
   } else if (Array.isArray(runnable)) {
     const first = runnable[0]
     if (typeof first === 'function' && first.constructor.name === 'GeneratorFunction') {
-      runCorroutine(runnable, handle, myZone)
+      runCoroutine(runnable, handle, myZone)
     } else if (typeof first === 'object' && first.type === runnableFromFunctionType) {
       runFromCb(runnable, handle, parentHandle)
     } else {
