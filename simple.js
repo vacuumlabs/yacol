@@ -2,6 +2,7 @@
 import {run, alts, zone} from './proc'
 import {runnableFromFunction} from './utils'
 import {putMessage, getMessage, onReturn} from './messaging'
+import Promise from 'bluebird'
 
 const delay = runnableFromFunction(([time], cb) => setTimeout(() => cb(), time))
 
@@ -14,14 +15,12 @@ const inc = function*(...args) {
   return res
 }
 
-const msg = ['one', 'two']
-
 run(function*() {
-  for (let i = 0; i < 3; i++) {
-    console.log(msg[i].length)
-    yield [delay, 100]
+  for (let i = 0; i < 10; i++) {
+    console.log('here', i)
+    yield Promise.reject(new Error('yuck fou'))
   }
-})
+}, {onError: (err) => {console.log(err.message)}})
 
 /*
 run(function*() {

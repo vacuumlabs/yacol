@@ -2,6 +2,7 @@ import {run} from '../proc'
 import {runnableFromFunction} from '../utils'
 import {onReturn} from '../messaging'
 import {assert} from 'chai'
+import {resetTimer, timeApprox} from './utils'
 
 const delay = runnableFromFunction((time, cb) => setTimeout(() => cb(), time))
 
@@ -10,17 +11,6 @@ const inc = function*(a, b) {
   return a + b
 }
 
-const getTime = () => (new Date()).getTime()
-let timeStart
-
-function resetTimer() {
-  timeStart = getTime()
-}
-
-function timeApprox(target) {
-  const delta = getTime() - timeStart
-  assert.approximately(delta, target, target / 10)
-}
 
 beforeEach(resetTimer)
 

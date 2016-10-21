@@ -40,6 +40,15 @@ const runFromCb = (runnable, handle, parentHandle) => {
   }
 }
 
+const runPromise = (promise, handle) => {
+  promise.then((res) => {
+    pushMessage(handle.channel, res)
+    pushEnd(handle)
+  }).catch((err) => {
+    handleError(err, handle)
+  })
+}
+
 function handleError(e, handle) {
 
   // first set .error attr to all errorneous channels, only then pushEnd to them to prevent
@@ -149,13 +158,6 @@ function tryEnd(handle) {
   }
 }
 
-function argIsRunnable(sth) {
-  return (sth.type === handleType) ||
-    (sth.type === runnableFromFunctionType) ||
-    (typeof sth === 'function' && sth.constructor.name === 'GeneratorFunction') ||
-    (Array.isArray(sth) && argIsRunnable(sth[0]))
-}
-
 
 // implementation of run
 const run = (runnable, options = {}) => {
@@ -203,6 +205,10 @@ const run = (runnable, options = {}) => {
     })
   } else if (typeof runnable === 'function') {
     runCorroutine([runnable], handle)
+  } else if (typeof runnable === 'object' &&
+      typeof runnable.then === 'function' &&
+      typeof runnable.then === 'function') {
+    runPromise(runnable, handle)
   } else if (typeof runnable === 'object' && runnable.type === runnableFromFunctionType) {
     runFromCb([runnable], handle, parentHandle)
   } else if (Array.isArray(runnable)) {
