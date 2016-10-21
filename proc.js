@@ -99,7 +99,12 @@ const runCoroutine = (runnable, handle) => {
           tryEnd(handle)
         } else {
           nxt = nxt.value
-          let childHandle = run(nxt, handle)
+          let childHandle
+          if (isHandle(nxt)) {
+            childHandle = nxt
+          } else {
+            childHandle = run(nxt)
+          }
           onReturn(childHandle, (err, ret) => {
             if (err == null) {
               step(ret)
@@ -202,7 +207,7 @@ export const run = (runnable, options = {}) => {
   })
 
   setTimeout(() => {handle.configLocked = true}, 0)
-  if (typeof runnable === 'object' && runnable.type === handleType) {
+  if (isHandle(runnable)) {
     onReturn(runnable, (err, msg) => {
       if (err == null) {
         pushEnd(handle, msg)
@@ -239,8 +244,12 @@ export const run = (runnable, options = {}) => {
   return handle
 }
 
+function isHandle(handle) {
+  return (typeof handle === 'object' && handle != null && handle.type === handleType)
+}
+
 function assertHandle(handle) {
-  if (handle.type !== handleType) {
+  if (!isHandle(handle)) {
     throw new Error('argument expected to be a handle')
   }
 }

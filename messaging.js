@@ -27,7 +27,6 @@ export function pushMessage(channel, message) {
   queue.push(message)
 }
 
-
 export function createChannel(options = {}) {
   return ({
     type: channelType,
