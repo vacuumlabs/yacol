@@ -9,7 +9,7 @@ describe('messaging', () => {
 
   for (let factor of [0.2, 0.5, 1, 1.5, 2]) {
 
-    it('sends and receive messages ', (done) => {
+    it('sends and receive messages ', () => run(function*() {
 
       const rep = 7
       const baseWait = 50
@@ -21,15 +21,7 @@ describe('messaging', () => {
         }
       })
 
-      const handle2 = run(function*() {
-        for (let i = 0; i < rep; i++) {
-          yield [delay, randomInt(baseWait)]
-          const msg = yield [getMessage, handle1]
-          assert.equal(msg, i)
-        }
-      })
-
-      const handle3 = run(function*() {
+      run(function*() {
         for (let i = 0; i < rep; i++) {
           yield [delay, randomInt(baseWait)]
           const msg = yield [getMessage, handle1]
@@ -38,12 +30,14 @@ describe('messaging', () => {
       })
 
       run(function*() {
-        yield handle1
-        yield handle2
-        yield handle3
-        done()
+        for (let i = 0; i < rep; i++) {
+          yield [delay, randomInt(baseWait)]
+          const msg = yield [getMessage, handle1]
+          assert.equal(msg, i)
+        }
       })
-    })
+
+    }))
   }
 
 })

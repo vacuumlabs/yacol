@@ -40,7 +40,6 @@ describe('gc', () => {
 
     const handle2 = run(function*() {
       for (let i = 0; i < rep; i++) {
-        console.log(i)
         yield [getMessage, handle1]
       }
     })

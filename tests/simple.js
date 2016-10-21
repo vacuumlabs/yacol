@@ -11,7 +11,6 @@ const inc = function*(a, b) {
   return a + b
 }
 
-
 beforeEach(resetTimer)
 
 describe('basics', () => {
@@ -118,6 +117,15 @@ describe('basics', () => {
       timeApprox(200)
       done()
     })
+  })
+
+  it('can be awaited', async () => {
+    const res = await run(function*() {
+      yield [delay, 100]
+      return 1
+    })
+    timeApprox(100)
+    assert.equal(res, 1)
   })
 
 })

@@ -18,28 +18,14 @@ const inc = function*(...args) {
 const baseWait = 50
 const rep = 10
 
-const handle1 = run(function*() {
-  for (let i = 0; i < rep; i++) {
-    yield [delay, randomInt(baseWait)]
-    yield [putMessage, i]
+run(function*() {
+  for (let i = 0; i < 3; i++) {
+    console.log('here', i)
+    yield [delay, 100]
   }
-})
-
-const handle2 = run(function*() {
-  for (let i = 0; i < rep; i++) {
-    yield [delay, randomInt(baseWait)]
-    const msg = yield [getMessage, handle1]
-    console.log('handle2', msg)
-  }
-})
-
-const handle3 = run(function*() {
-  for (let i = 0; i < rep; i++) {
-    yield [delay, randomInt(baseWait)]
-    const msg = yield [getMessage, handle1]
-    console.log('handle3', msg)
-  }
-})
+  const val = yield [inc, 3, 4]
+  console.log('res', val)
+}).then((res) => {console.log('tututu', res)})
 
 /*
 run(function*() {

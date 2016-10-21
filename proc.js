@@ -164,6 +164,20 @@ export const run = (runnable, options = {}) => {
     return handle
   }
 
+  function then(fn) {
+    return new Promise((resolve, reject) => {
+      onReturn(
+        handle,
+        (err, res) => {
+          if (err == null) {
+            resolve(res)
+          } else {
+            reject(err)
+          }
+        })
+    }).then(fn)
+  }
+
   const handle = {
     type: handleType,
     id,
@@ -179,6 +193,7 @@ export const run = (runnable, options = {}) => {
     returnListeners: new Set(),
     lastValue: null,
     catch: (errorHandler) => addToOptions('onError', errorHandler),
+    then
   }
 
   channel.handle = handle

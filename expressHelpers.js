@@ -5,7 +5,7 @@ const appToChan = new WeakMap()
 
 export function register(app, verb, pattern, reqHandler) {
   if (!appToChan.has(app)) {
-    appToChan.set(app, createChannel())
+    appToChan.set(app, createChannel({discardRead: true}))
   }
   const reqChannel = appToChan.get(app)
   app[verb](pattern, (req, res, next) => {
