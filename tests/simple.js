@@ -1,4 +1,4 @@
-import {run, runRec} from '../proc'
+import {run} from '../proc'
 import {runnableFromFunction} from '../utils'
 import {onReturn} from '../messaging'
 import {assert} from 'chai'
@@ -126,22 +126,6 @@ describe('basics', () => {
         yield [delay, 100]
       })
       timeApprox(200)
-      done()
-    })
-  })
-
-  it('runRec', (done) => {
-    run(function*() {
-      const lateOne = runnableFromFunction((args, cb) => setTimeout(() => cb(null, 1), 100))
-      const lateValue = runnableFromFunction(([val], cb) => setTimeout(() => cb(null, val)), 100)
-      const res = yield runRec([inc,
-        run([inc, 1, 1]),
-        [inc, [inc, 1, 1], 1],
-        run([lateOne]),
-        lateOne,
-        [lateValue, 1]])
-      timeApprox(300)
-      assert.equal(res, 8)
       done()
     })
   })

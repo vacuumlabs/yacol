@@ -26,13 +26,18 @@ function zoneSet(key, val) {
 const runFromCb = (runnable, handle, parentHandle) => {
   const rfc = runnable[0]
   const args = [...runnable].splice(1)
-  rfc.cb(args, (err, res) => {
-    if (err != null) {
-      handleError(err, handle)
-    }
-    pushMessage(handle.channel, res)
-    pushEnd(handle)
-  }, parentHandle == null ? null : parentHandle.channel)
+  try {
+    rfc.cb(args, (err, res) => {
+      if (err != null) {
+        handleError(err, handle)
+      } else {
+        pushMessage(handle.channel, res)
+        pushEnd(handle)
+      }
+    }, parentHandle == null ? null : parentHandle.channel)
+  } catch (err) {
+    handleError(err, handle)
+  }
 }
 
 function handleError(e, handle) {
@@ -151,38 +156,6 @@ function argIsRunnable(sth) {
     (Array.isArray(sth) && argIsRunnable(sth[0]))
 }
 
-const runRecursive = (runnable) => {
-  const args = runnable.slice(1)
-  const realArgs = new Array(args.length)
-  return run(function*() { //eslint-disable-line no-use-before-define
-    for (let i = 0; i < args.length; i++) {
-      if (argIsRunnable(args[i]) && args[i].type !== handleType) {
-        args[i] = runRec(args[i])
-      }
-    }
-    for (let i = 0; i < args.length; i++) {
-      if (args[i].type === handleType) {
-        realArgs[i] = yield run(args[i])
-      } else {
-        realArgs[i] = args[i]
-      }
-    }
-    const res = yield run([runnable[0], ...realArgs]) //eslint-disable-line no-use-before-define
-    return res
-  })
-}
-
-export const runRec = (runnable, options = {}) => {
-  if (Array.isArray(runnable)) {
-    const args = runnable.slice(1)
-    for (let arg of args) {
-      if (argIsRunnable(arg)) {
-        return runRecursive(runnable)
-      }
-    }
-  }
-  return run(runnable, options) //eslint-disable-line no-use-before-define
-}
 
 // implementation of run
 const run = (runnable, options = {}) => {

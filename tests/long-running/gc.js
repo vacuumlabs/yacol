@@ -12,7 +12,7 @@ describe('gc', () => {
 
     const getLargeData = function*(n) {
       for (let i = 0; i < 10; i++) {
-        yield [putMessage, [junk, n, i].join('')]
+        putMessage([junk, n, i].join(''))
       }
     }
 
@@ -20,7 +20,7 @@ describe('gc', () => {
       // if all data was in RAM, the memory should suffice for 20 runs.
       // If 200 runs pass, it's probably OK
       for (let i = 0; i < 200; i++) {
-        const res = yield [getLargeData, i]
+        yield [getLargeData, i]
       }
       done()
     })

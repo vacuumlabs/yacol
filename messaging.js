@@ -59,6 +59,9 @@ export const getMessageSafe = runnableFromFunction((handle, cb, errorValue = noE
 })
 
 export const getMessage = runnableFromFunction(([chanOrHandle], cb) => {
+  if (typeof chanOrHandle !== 'object' || chanOrHandle == null) {
+    throw new Error('first argument of getMessage should be either channel or coroutine handle')
+  }
   if (chanOrHandle.type === channelType) {
     const channel = chanOrHandle
     const {queue, lastValue} = channel
