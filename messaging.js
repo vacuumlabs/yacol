@@ -51,6 +51,20 @@ const getMessageSafe_ = (handle, cb, errorValue = noErrorValue) => {
   }
 }
 
+export const getReturnSafe = runnableFromFunction(([handle, errorValue = noErrorValue], cb) => {
+  onReturn(handle, (err, res) => {
+    if (err != null) {
+      if (errorValue !== noErrorValue) {
+        cb(null, errorValue)
+      } else {
+        cb(err)
+      }
+    } else {
+      cb(err)
+    }
+  })
+})
+
 export const getMessageSafe = runnableFromFunction(([handle, errorValue = noErrorValue], cb) => {
   assertHandle(handle)
   if (errorValue === noErrorValue) {
