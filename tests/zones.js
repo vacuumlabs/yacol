@@ -1,4 +1,5 @@
-import {run, zone} from '../proc'
+import {run, zone} from '..'
+
 import {assert} from 'chai'
 
 describe('zones', () => {

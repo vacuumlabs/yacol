@@ -4,25 +4,6 @@ import {runnableFromFunction} from './utils'
 
 let idSeq = 0
 
-function zoneGet(key) {
-  let zone = global[pidString].zone
-  while (true) {
-    if (zone.public.has(key)) {
-      return zone.public.get(key)
-    } else {
-      zone = zone.parentZone
-      if (zone == null) {
-        break
-      }
-    }
-  }
-}
-
-function zoneSet(key, val) {
-  const zone = global[pidString].zone
-  zone.public.set(key, val)
-}
-
 const runFromCb = (runnable, handle, parentHandle) => {
   const rfc = runnable[0]
   const args = [...runnable].splice(1)
@@ -160,8 +141,7 @@ function tryEnd(handle) {
 
 
 // implementation of run
-const run = (runnable, options = {}) => {
-
+export const run = (runnable, options = {}) => {
 
   let id = `${idSeq++}`
   let channel = createChannel()
@@ -228,9 +208,6 @@ const run = (runnable, options = {}) => {
 
   return handle
 }
-
-const zone = {get: zoneGet, set: zoneSet}
-export {run, zone}
 
 export const alts = runnableFromFunction((args, cb) => {
   let returned = false
