@@ -12,11 +12,9 @@ describe('error handling', () => {
     run(function*() {
       yield [delay, 100]
       throw new Error('yuck fou')
-    }, {
-      onError: (e) => {
-        assert.equal(e.message, 'yuck fou')
-        done()
-      }
+    }).catch((e) => {
+      assert.equal(e.message, 'yuck fou')
+      done()
     })
   })
 
@@ -25,9 +23,9 @@ describe('error handling', () => {
     run(function*() {
       run(function*() {
         throw new Error('yuck fou')
-      }, {onError: (e) => {}})
+      }).catch((e) => {})
       yield [delay, 10]
-    }, {onError: (e) => {here = true}})
+    }).catch((e) => {here = true})
     setTimeout(() => {
       assert.isNotOk(here)
       done()
@@ -46,12 +44,8 @@ describe('error handling', () => {
         yield [delay, 10]
         // inner run throws sooner than this is reached
         here3 = true
-      }, {
-        onError: (e) => {assert.equal(e.message, 'yuck fou'); here1 = true}
-      })
-    }, {
-      onError: (e) => {here2 = true}
-    })
+      }).catch((e) => {assert.equal(e.message, 'yuck fou'); here1 = true})
+    }).catch((e) => {here2 = true})
     setTimeout(() => {
       assert.isOk(here1)
       assert.isNotOk(here2)
@@ -69,12 +63,8 @@ describe('error handling', () => {
           throw new Error('yuck fou')
         })
         yield [delay, 100]
-      }, {
-        onError: (e) => {assert.equal(e.message, 'yuck fou'); here1 = true; throw e}
-      })
-    }, {
-      onError: (e) => {assert.equal(e.message, 'yuck fou'); here2 = true}
-    })
+      }).catch((e) => {assert.equal(e.message, 'yuck fou'); here1 = true; throw e})
+    }).catch((e) => {assert.equal(e.message, 'yuck fou'); here2 = true})
     setTimeout(() => {
       assert.isOk(here1)
       assert.isOk(here2)
@@ -86,18 +76,18 @@ describe('error handling', () => {
     run(function*() {
       const handle1 = run(function*() {
         throw new Error('yuck fou')
-      }, {onError: (e) => {}})
+      }).catch((e) => {})
       yield handle1
-    }, {onError: (e) => {assert.equal(e.message, 'yuck fou'); done()}})
+    }).catch((e) => {assert.equal(e.message, 'yuck fou'); done()})
   })
 
   it('Yielding getMessage on failed process propagates error', function(done) {
     run(function*() {
       const handle1 = run(function*() {
         throw new Error('yuck fou')
-      }, {onError: (e) => {}})
+      }).catch((e) => {})
       yield [getMessage, handle1]
-    }, {onError: (e) => {assert.equal(e.message, 'yuck fou'); done()}})
+    }).catch((e) => {assert.equal(e.message, 'yuck fou'); done()})
   })
 
   it('Yielding getMessageSafe on failed process returns default value', function(done) {
@@ -107,11 +97,11 @@ describe('error handling', () => {
     run(function*() {
       const handle1 = run(function*() {
         throw new Error('yuck fou')
-      }, {onError: (e) => {}})
+      }).catch((e) => {})
       const res = yield [getMessageSafe, handle1, 42]
       here1 = true
       assert.equal(res, 42)
-    }, {onError: (e) => {here2 = true}})
+    }).catch((e) => {here2 = true})
     setTimeout(() => {
       assert.isOk(here1)
       assert.isNotOk(here2)
@@ -126,11 +116,11 @@ describe('error handling', () => {
     run(function*() {
       const handle1 = run(function*() {
         throw new Error('yuck fou')
-      }, {onError: (e) => {}})
+      }).catch((e) => {})
       const res = yield [getReturnSafe, handle1, 42]
       here1 = true
       assert.equal(res, 42)
-    }, {onError: (e) => {here2 = true}})
+    }).catch((e) => {here2 = true})
     setTimeout(() => {
       assert.isOk(here1)
       assert.isNotOk(here2)

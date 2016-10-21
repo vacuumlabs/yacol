@@ -1,4 +1,4 @@
-import {runnableFromFunction, getCurrentCoroutine} from './utils'
+import {runnableFromFunction} from './utils'
 import {channelType, handleType} from './constants'
 import {WaitingQueue} from './queue'
 
@@ -91,8 +91,8 @@ export const getMessage = runnableFromFunction(([chanOrHandle], cb) => {
   }
 })
 
-export const putMessage = runnableFromFunction(([msg], cb) => {
-  pushMessage(getCurrentCoroutine().channel, msg)
+export const putMessage = runnableFromFunction(([msg], cb, parrentHandle) => {
+  pushMessage(parrentHandle.channel, msg)
   cb()
 })
 

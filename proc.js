@@ -4,20 +4,22 @@ import {pidString, handleType, runnableFromFunctionType} from './constants'
 let idSeq = 0
 
 const runFromCb = (runnable, handle, parentHandle) => {
-  const rfc = runnable[0]
-  const args = [...runnable].splice(1)
-  try {
-    rfc.cb(args, (err, res) => {
-      if (err != null) {
-        handleError(err, handle)
-      } else {
-        pushMessage(handle.channel, res)
-        pushEnd(handle)
-      }
-    }, parentHandle == null ? null : parentHandle.channel)
-  } catch (err) {
-    handleError(err, handle)
-  }
+  setTimeout(() => {
+    const rfc = runnable[0]
+    const args = [...runnable].splice(1)
+    try {
+      rfc.cb(args, (err, res) => {
+        if (err != null) {
+          handleError(err, handle)
+        } else {
+          pushMessage(handle.channel, res)
+          pushEnd(handle)
+        }
+      }, parentHandle)
+    } catch (err) {
+      handleError(err, handle)
+    }
+  }, 0)
 }
 
 const runPromise = (promise, handle) => {
@@ -151,6 +153,17 @@ export const run = (runnable, options = {}) => {
     parentZone: parentHandle == null ? null : parentHandle.zone
   }
 
+  function addToOptions(key, val) {
+    if (handle.configLocked) {
+      console.error('Cannot modify options after coroutine started. Ignoring the command')
+    } else if (key in handle.options) {
+      console.error('Cannot override coroutine options. Ignoring the command')
+    } else {
+      handle.options[key] = val
+    }
+    return handle
+  }
+
   const handle = {
     type: handleType,
     id,
@@ -158,11 +171,13 @@ export const run = (runnable, options = {}) => {
     zone: myZone,
     pendingSubProc: 0,
     locallyDone: false, // generator returned
+    configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
     done: false, // generator returned and everything terminated
     error: null,
     options,
     parent: parentHandle,
     returnListeners: new Set(),
+    catch: (errorHandler) => addToOptions('onError', errorHandler),
   }
 
   channel.handle = handle
@@ -173,6 +188,7 @@ export const run = (runnable, options = {}) => {
     tryEnd(parentHandle)
   })
 
+  setTimeout(() => {handle.configLocked = true}, 0)
   if (typeof runnable === 'object' && runnable.type === handleType) {
     onReturn(runnable, (err, msg) => {
       if (err == null) {
