@@ -79,43 +79,14 @@ describe('error handling', () => {
     }).catch((e) => {assert.equal(e.message, 'yuck fou'); done()})
   })
 
-  it('Yielding getMessage on failed process propagates error', function(done) {
-    run(function*() {
-      const handle1 = run(function*() {
-        throw new Error('yuck fou')
-      }).catch((e) => {})
-      yield [getMessage, handle1]
-    }).catch((e) => {assert.equal(e.message, 'yuck fou'); done()})
-  })
-
-  it('Yielding getMessageSafe on failed process returns default value', function(done) {
+  it('Error handler can return value', function(done) {
     let here1 = false
     let here2 = false
-
     run(function*() {
       const handle1 = run(function*() {
         throw new Error('yuck fou')
-      }).catch((e) => {})
-      const res = yield [getMessageSafe, handle1, 42]
-      here1 = true
-      assert.equal(res, 42)
-    }).catch((e) => {here2 = true})
-    setTimeout(() => {
-      assert.isOk(here1)
-      assert.isNotOk(here2)
-      done()
-    }, 100)
-  })
-
-  it('Yielding getReturnSafe on failed process returns default value', function(done) {
-    let here1 = false
-    let here2 = false
-
-    run(function*() {
-      const handle1 = run(function*() {
-        throw new Error('yuck fou')
-      }).catch((e) => {})
-      const res = yield [getReturnSafe, handle1, 42]
+      }).catch((e) => 42)
+      const res = yield handle1
       here1 = true
       assert.equal(res, 42)
     }).catch((e) => {here2 = true})

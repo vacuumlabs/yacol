@@ -1,8 +1,7 @@
 import {run} from '../proc'
-import {randomInt} from '../utils'
-import {putMessage, getMessage} from '../messaging'
+import {randomInt, delay} from '../utils'
+import {pushMessage, getMessage, createChannel} from '../messaging'
 import {assert} from 'chai'
-import {delay} from '../utils'
 
 describe('messaging', () => {
 
@@ -13,17 +12,19 @@ describe('messaging', () => {
       const rep = 7
       const baseWait = 50
 
-      const handle1 = run(function*() {
+      const chan = createChannel()
+
+      run(function*() {
         for (let i = 0; i < rep; i++) {
           yield [delay, randomInt(baseWait * factor)]
-          yield [putMessage, i]
+          pushMessage(chan, i)
         }
       })
 
       run(function*() {
         for (let i = 0; i < rep; i++) {
           yield [delay, randomInt(baseWait)]
-          const msg = yield [getMessage, handle1]
+          const msg = yield [getMessage, chan]
           assert.equal(msg, i)
         }
       })
@@ -31,7 +32,7 @@ describe('messaging', () => {
       run(function*() {
         for (let i = 0; i < rep; i++) {
           yield [delay, randomInt(baseWait)]
-          const msg = yield [getMessage, handle1]
+          const msg = yield [getMessage, chan]
           assert.equal(msg, i)
         }
       })

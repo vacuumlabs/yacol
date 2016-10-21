@@ -1,7 +1,8 @@
 /* eslint-disable no-unused-vars */
 import {run} from './proc'
+import {alts} from './alts'
 import {randomInt} from './utils'
-import {putMessage, getMessage, getMessageSafe, onReturn} from './messaging'
+import {getMessage} from './messaging'
 import Promise from 'bluebird'
 import fs from 'fs'
 
@@ -16,18 +17,13 @@ const inc = function*(...args) {
   return res
 }
 
-const baseWait = 50
-const rep = 10
-
-const pokus = function*() {
-  const handle1 = run([inc, 3, 4])
-  yield run([getMessage, handle1])
-}
-
 run(function*() {
-  yield run(pokus)
-  //yield run(true)
-})
+  const handle1 = run(function*() {
+    throw new Error('yuck fou')
+  }).catch((e) => 42)
+  const res = yield handle1
+  console.log(res)
+}).catch((e) => {console.log('cele zle')})
 
 /*
 run(function*() {

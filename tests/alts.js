@@ -1,4 +1,4 @@
-import {run, alts, getMessage} from '../'
+import {run, alts, getMessage, createChannel} from '../'
 import {randomInt, delay} from '../utils'
 import {assert} from 'chai'
 
@@ -12,7 +12,7 @@ describe('alts', () => {
 
   for (let i = 0; i < 10; i++) {
 
-    it('behaves', (done) => {
+    it('alts', (done) => {
       run(function*() {
         const args = []
         let mini = 0
@@ -29,14 +29,20 @@ describe('alts', () => {
         for (let j = 0; j < 100; j++) {
           const ind1 = randomInt(10)
           const ind2 = randomInt(10)
-          let tmp = args[ind1]
-          args[ind1] = args[ind2]
-          args[ind2] = tmp
-          if (ind1 === mini) {mini = ind2}
-          if (ind2 === mini) {mini = ind1}
+          if (ind1 !== ind2) {
+            let tmp = args[ind1]
+            args[ind1] = args[ind2]
+            args[ind2] = tmp
+            if (ind1 === mini) {
+              mini = ind2
+            } else if (ind2 === mini) {
+              mini = ind1
+            }
+          }
         }
-        const altsCoroutine = run([alts, ...args])
-        const res = yield [getMessage, altsCoroutine]
+        const channel = createChannel()
+        run([alts, channel, ...args])
+        const res = yield [getMessage, channel]
         assert.deepEqual(res, [mini, sum])
         done()
       })

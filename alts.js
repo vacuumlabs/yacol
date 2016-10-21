@@ -1,17 +1,17 @@
-import {createChannel, getMessage, putMessage, pushMessage} from './messaging'
+import {pushMessage, assertChannel} from './messaging'
 import {run} from './proc'
 
 export const alts = function*(...args) {
-  let resChannel = createChannel()
+  let channel = args[0]
+  args = args.slice(1)
+  assertChannel(channel)
+
   for (let i = 0; i < args.length; i++) {
     run(function*() {
       const res = yield args[i]
-      pushMessage(resChannel, [i, res])
+      pushMessage(channel, [i, res])
     })
   }
-  // take messages from resChannel as they come and emit them as my own
-  for (;;) {
-    const msg = yield [getMessage, resChannel]
-    yield [putMessage, msg]
-  }
+
 }
+

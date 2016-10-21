@@ -1,12 +1,10 @@
-import {pushMessage, pushEnd, onReturn, createChannel, needContext} from './messaging'
 import {pidString, handleType, builtinFns} from './constants'
 
 let idSeq = 0
 
 const runPromise = (promise, handle) => {
   promise.then((res) => {
-    pushMessage(handle.channel, res)
-    pushEnd(handle)
+    pushEnd(handle, res)
   }).catch((err) => {
     handleError(err, handle)
   })
@@ -31,16 +29,17 @@ function handleError(e, handle) {
 
   // first set .error attr to all errorneous channels, only then pushEnd to them to prevent
   // 'race conds'
-  const shouldPushEnd = []
+  const shouldPushEnd = new Map()
 
   function _handleError(e, handle) {
     handle.error = e
-    shouldPushEnd.push(handle)
+    shouldPushEnd.set(handle, null)
     let handler = handle.options.onError
     let processed = false
     if (handler != null) {
       try {
-        handler(e)
+        let errorValue = handler(e)
+        shouldPushEnd.set(handle, errorValue)
         processed = true
       } catch (errorCaught) {
         e = errorCaught
@@ -58,8 +57,8 @@ function handleError(e, handle) {
   }
 
   _handleError(e, handle)
-  for (let handle of shouldPushEnd) {
-    pushEnd(handle)
+  for (let [handle, value] of shouldPushEnd) {
+    pushEnd(handle, value)
   }
 }
 
@@ -95,9 +94,7 @@ const runCoroutine = (runnable, handle) => {
           if (handle.locallyDone) {
             throw new Error('myZone.done was already set to true')
           }
-          if (nxt.value !== undefined) {
-            pushMessage(handle.channel, nxt.value)
-          }
+          handle.returnValue = nxt.value
           handle.locallyDone = true
           tryEnd(handle)
         } else {
@@ -140,8 +137,7 @@ function looksLikePromise(obj) {
   return (
     typeof obj === 'object' &&
     typeof obj.then === 'function' &&
-    // TODO fix this
-    typeof obj.then === 'function'
+    typeof obj.catch === 'function'
   )
 }
 
@@ -149,7 +145,6 @@ function looksLikePromise(obj) {
 export const run = (runnable, options = {}) => {
 
   let id = `${idSeq++}`
-  let channel = createChannel({discardRead: options.discardRead})
   const parentHandle = global[pidString]
 
   let myZone = {
@@ -185,12 +180,12 @@ export const run = (runnable, options = {}) => {
   const handle = {
     type: handleType,
     id,
-    channel,
     zone: myZone,
     pendingSubProc: 0,
     locallyDone: false, // generator returned
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
     done: false, // generator returned and everything terminated
+    //returnValue,
     error: null,
     options,
     parent: parentHandle,
@@ -199,8 +194,6 @@ export const run = (runnable, options = {}) => {
     catch: (errorHandler) => addToOptions('onError', errorHandler),
     then
   }
-
-  channel.handle = handle
 
   changeProcCnt(parentHandle, 1)
   onReturn(handle, (err, res) => {
@@ -212,8 +205,7 @@ export const run = (runnable, options = {}) => {
   if (typeof runnable === 'object' && runnable.type === handleType) {
     onReturn(runnable, (err, msg) => {
       if (err == null) {
-        pushMessage(handle.channel, msg)
-        pushEnd(handle)
+        pushEnd(handle, msg)
       } else {
         handleError(err, handle)
       }
@@ -230,12 +222,7 @@ export const run = (runnable, options = {}) => {
     } else if (typeof first === 'function' && builtinFns.has(first)) {
       runBuiltin(runnable, handle)
     } else if (typeof first === 'function') {
-      let ctxArgs = args
-      if (needContext.has(first)) {
-        const ctx = {parentHandle}
-        ctxArgs = [ctx, ...args]
-      }
-      const promise = first(...ctxArgs)
+      const promise = first(...args)
       if (!looksLikePromise(promise)) {
         throw new Error('function should return a promise')
       }
@@ -250,4 +237,49 @@ export const run = (runnable, options = {}) => {
   }
 
   return handle
+}
+
+function assertHandle(handle) {
+  if (handle.type !== handleType) {
+    throw new Error('argument expected to be a handle')
+  }
+}
+
+const noReturnValue = {}
+function pushEnd(handle, returnValue = noReturnValue) {
+  assertHandle(handle)
+  if (returnValue !== noReturnValue) {
+    handle.returnValue = returnValue
+  }
+  if (handle.done) {
+    throw new Error('cannot end channel more than once')
+  }
+  handle.done = true
+  for (let listener of handle.returnListeners) {
+    listener()
+  }
+}
+
+export function onReturn(handle, cb) {
+  assertHandle(handle)
+
+  function _cb() {
+    if (handle.error) {
+      if ('returnValue' in handle) {
+        cb(null, handle.returnValue)
+      } else {
+        cb(handle.error)
+      }
+    } else {
+      cb(null, handle.returnValue)
+    }
+  }
+  if (handle.done) {
+    _cb()
+  } else {
+    handle.returnListeners.add(_cb)
+  }
+  return {dispose: () => {
+    handle.returnListeners.delete(_cb)
+  }}
 }

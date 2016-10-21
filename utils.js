@@ -2,7 +2,7 @@ import {pidString} from './constants'
 import Promise from 'bluebird'
 
 export function randomInt(n) {
-  return Math.random() * n
+  return Math.floor(Math.random() * n)
 }
 
 export function getCurrentCoroutine() {
