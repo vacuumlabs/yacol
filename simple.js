@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
-import {run, alts, zone} from './proc'
+import {run, alts} from './proc'
 import {runnableFromFunction} from './utils'
-import {putMessage, getMessage, onReturn} from './messaging'
+import {putMessage, getMessage, getMessageSafe, onReturn} from './messaging'
 import Promise from 'bluebird'
 
 const delay = runnableFromFunction(([time], cb) => setTimeout(() => cb(), time))
@@ -16,11 +16,12 @@ const inc = function*(...args) {
 }
 
 run(function*() {
-  for (let i = 0; i < 10; i++) {
-    console.log('here', i)
-    yield Promise.reject(new Error('yuck fou'))
-  }
-}, {onError: (err) => {console.log(err.message)}})
+  const handle1 = run(function*() {
+    throw new Error('yuck fou')
+  }, {onError: (e) => {}})
+  const res = yield [getMessageSafe, handle1, 42]
+  console.log(res)
+})
 
 /*
 run(function*() {

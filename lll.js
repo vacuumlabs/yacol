@@ -6,7 +6,6 @@ const tryValue = function*() {
 
 }
 
-
 yieldables:
   - Handle: returns
   - Promise

@@ -1,7 +1,7 @@
 /* eslint-disable prefer-arrow-callback */
 import {run} from '../proc'
 import {runnableFromFunction} from '../utils'
-import {getMessage} from '../messaging'
+import {getMessage, getMessageSafe} from '../messaging'
 import {assert} from 'chai'
 
 const delay = runnableFromFunction((time, cb) => setTimeout(() => cb(), time))
@@ -98,6 +98,25 @@ describe('error handling', () => {
       }, {onError: (e) => {}})
       yield [getMessage, handle1]
     }, {onError: (e) => {assert.equal(e.message, 'yuck fou'); done()}})
+  })
+
+  it('Yielding getMessageSafe on failed process returns default value', function(done) {
+    let here1 = false
+    let here2 = false
+
+    run(function*() {
+      const handle1 = run(function*() {
+        throw new Error('yuck fou')
+      }, {onError: (e) => {}})
+      const res = yield [getMessageSafe, handle1, 42]
+      here1 = true
+      assert.equal(res, 42)
+    }, {onError: (e) => {here2 = true}})
+    setTimeout(() => {
+      assert.isOk(here1)
+      assert.isNotOk(here2)
+      done()
+    }, 100)
   })
 
   //yield = [tryWithValue, [getMessage, handle1], val]

@@ -52,6 +52,7 @@ function handleError(e, handle) {
     if (!processed) {
       if (handle.parent == null) {
         // uncaught error on the top level
+        console.error('unhandled error occured:', e)
         throw e
       } else {
         _handleError(e, handle.parent)
@@ -138,7 +139,6 @@ function tryEnd(handle) {
     }
   }
 }
-
 
 // implementation of run
 export const run = (runnable, options = {}) => {

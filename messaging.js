@@ -15,6 +15,7 @@ function assertHandle(handle) {
 }
 
 const noErrorValue = {}
+
 const getMessageSafe_ = (handle, cb, errorValue = noErrorValue) => {
   assertHandle(handle)
   const channel = handle.channel
@@ -43,14 +44,14 @@ const getMessageSafe_ = (handle, cb, errorValue = noErrorValue) => {
         if (errorValue === noErrorValue) {
           cb(err)
         } else {
-          cb(errorValue)
+          cb(null, errorValue)
         }
       }
     })
   }
 }
 
-export const getMessageSafe = runnableFromFunction((handle, cb, errorValue = noErrorValue) => {
+export const getMessageSafe = runnableFromFunction(([handle, errorValue = noErrorValue], cb) => {
   assertHandle(handle)
   if (errorValue === noErrorValue) {
     throw new Error('the \'errorValue\' arg of getMessageSafe cannot be null')
