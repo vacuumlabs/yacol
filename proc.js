@@ -1,6 +1,5 @@
 import {pushMessage, pushEnd, onReturn, createChannel} from './messaging'
 import {pidString, handleType, runnableFromFunctionType} from './constants'
-import {runnableFromFunction} from './utils'
 
 let idSeq = 0
 
@@ -208,16 +207,3 @@ export const run = (runnable, options = {}) => {
 
   return handle
 }
-
-export const alts = runnableFromFunction((args, cb) => {
-  let returned = false
-  for (let i = 0; i < args.length; i++) {
-    let handle = run(args[i])
-    onReturn(handle, (err, val) => {
-      if (!returned) {
-        returned = true
-        cb(err, [i, val])
-      }
-    })
-  }
-})

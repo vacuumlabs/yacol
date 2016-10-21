@@ -1,4 +1,4 @@
-import {run, alts} from '../proc'
+import {run, alts, getMessage} from '../'
 import {randomInt, delay} from '../utils'
 import {assert} from 'chai'
 
@@ -35,7 +35,8 @@ describe('alts', () => {
           if (ind1 === mini) {mini = ind2}
           if (ind2 === mini) {mini = ind1}
         }
-        const res = yield [alts, ...args]
+        const altsCoroutine = run([alts, ...args])
+        const res = yield [getMessage, altsCoroutine]
         assert.deepEqual(res, [mini, sum])
         done()
       })
