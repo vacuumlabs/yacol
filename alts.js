@@ -12,6 +12,6 @@ export const alts = function*(...args) {
   // take messages from resChannel as they come and emit them as my own
   for (;;) {
     const msg = yield [getMessage, resChannel]
-    putMessage(msg)
+    yield [putMessage, msg]
   }
 }

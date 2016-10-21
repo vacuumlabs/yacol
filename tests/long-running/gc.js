@@ -12,7 +12,7 @@ describe('gc', () => {
 
     const getLargeData = function*(n) {
       for (let i = 0; i < 10; i++) {
-        putMessage([junk, n, i].join(''))
+        yield [putMessage, [junk, n, i].join('')]
       }
     }
 

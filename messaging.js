@@ -91,9 +91,10 @@ export const getMessage = runnableFromFunction(([chanOrHandle], cb) => {
   }
 })
 
-export const putMessage = (msg) => {
+export const putMessage = runnableFromFunction(([msg], cb) => {
   pushMessage(getCurrentCoroutine().channel, msg)
-}
+  cb()
+})
 
 export function pushMessage(channel, message) {
   assertChannel(channel)
