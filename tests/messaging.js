@@ -29,9 +29,18 @@ describe('messaging', () => {
         }
       })
 
+      const handle3 = run(function*() {
+        for (let i = 0; i < rep; i++) {
+          yield [delay, randomInt(baseWait)]
+          const msg = yield [getMessage, handle1]
+          assert.equal(msg, i)
+        }
+      })
+
       run(function*() {
         yield handle1
         yield handle2
+        yield handle3
         done()
       })
     })

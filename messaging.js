@@ -16,10 +16,25 @@ function assertHandle(handle) {
 
 const noErrorValue = {}
 
-const getMessageSafe_ = (handle, cb, errorValue = noErrorValue) => {
+export const getReturnSafe = runnableFromFunction(([handle, errorValue = noErrorValue], cb) => {
+  onReturn(handle, (err, res) => {
+    if (err != null) {
+      if (errorValue !== noErrorValue) {
+        cb(null, errorValue)
+      } else {
+        cb(err)
+      }
+    } else {
+      cb(err)
+    }
+  })
+})
+
+const getMessageSafe_ = (handle, cb, parentHandle, errorValue = noErrorValue) => {
   assertHandle(handle)
   const channel = handle.channel
-  const {queue, lastValue} = channel
+  const {queue} = channel
+  const {lastValue} = parentHandle
 
   let returned = false
   let nextHandle
@@ -29,7 +44,7 @@ const getMessageSafe_ = (handle, cb, errorValue = noErrorValue) => {
     if (returnHandle != null) {
       returnHandle.dispose()
     }
-    channel.lastValue = nextElem
+    parentHandle.lastValue = nextElem
     cb(null, val)
     returned = true
   })
@@ -51,41 +66,29 @@ const getMessageSafe_ = (handle, cb, errorValue = noErrorValue) => {
   }
 }
 
-export const getReturnSafe = runnableFromFunction(([handle, errorValue = noErrorValue], cb) => {
-  onReturn(handle, (err, res) => {
-    if (err != null) {
-      if (errorValue !== noErrorValue) {
-        cb(null, errorValue)
-      } else {
-        cb(err)
-      }
-    } else {
-      cb(err)
-    }
-  })
-})
 
-export const getMessageSafe = runnableFromFunction(([handle, errorValue = noErrorValue], cb) => {
+export const getMessageSafe = runnableFromFunction(([handle, errorValue = noErrorValue], cb, parentHandle) => {
   assertHandle(handle)
   if (errorValue === noErrorValue) {
     throw new Error('the \'errorValue\' arg of getMessageSafe cannot be null')
   }
-  getMessageSafe_(handle, cb, errorValue)
+  getMessageSafe_(handle, cb, parentHandle, errorValue)
 })
 
-export const getMessage = runnableFromFunction(([chanOrHandle], cb) => {
+export const getMessage = runnableFromFunction(([chanOrHandle], cb, parentHandle) => {
   if (typeof chanOrHandle !== 'object' || chanOrHandle == null) {
     throw new Error('first argument of getMessage should be either channel or coroutine handle')
   }
   if (chanOrHandle.type === channelType) {
     const channel = chanOrHandle
-    const {queue, lastValue} = channel
+    const {lastValue} = parentHandle
+    const {queue} = channel
     queue.next(lastValue, (val, nextElem) => {
-      channel.lastValue = nextElem
+      parentHandle.lastValue = nextElem
       cb(null, val)
     })
   } else if (chanOrHandle.type === handleType) {
-    getMessageSafe_(chanOrHandle, cb)
+    getMessageSafe_(chanOrHandle, cb, parentHandle)
   } else {
     throw new Error('first argument of getMessage should be either channel or coroutine handle')
   }
@@ -139,10 +142,10 @@ export function onReturn(handle, cb) {
   }}
 }
 
-export function createChannel() {
+export function createChannel(options = {}) {
   return ({
     type: channelType,
-    queue: new WaitingQueue(),
-    lastValue: null
+    queue: new WaitingQueue(options),
+    options,
   })
 }

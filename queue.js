@@ -1,46 +1,26 @@
-export class SimpleQueue {
+export class WaitingQueue {
 
-  constructor() {
-    this.queue = []
-  }
-
-  push = (val) => {
-    this.queue.push(val)
-  }
-
-  pop = () => {
-    return this.queue.shift()
-  }
-
-  last = () => {
-    return this.queue[this.queue.length - 1]
-  }
-
-  length = () => {
-    return this.queue.length
-  }
-
-  values = () => {
-    return this.queue
-  }
-
-  empty = () => {
-    return this.length() === 0
-  }
-}
-
-export class WaitingQueue extends SimpleQueue {
-
-  constructor() {
-    super()
+  constructor(options = {}) {
     this.waiting = new Map()
+    this.options = options
+    this.min = 0
+    this.max = 0
+    this.queue = {}
   }
 
   push = (val) => {
-    // TODO debug this
-    // super.push(val)
-    this.queue.push(val)
+    this.queue[`${this.max}`] = val
+    this.max += 1
     this.trySatisfy()
+  }
+
+  empty = () => (this.max <= this.min)
+
+  pop = (val) => {
+    const result = this.queue[`${this.min}`]
+    delete this.queue[`${this.min}`]
+    this.min += 1
+    return result
   }
 
   next = (lastValue, cb) => {
@@ -49,14 +29,26 @@ export class WaitingQueue extends SimpleQueue {
     return {dispose: () => this.waiting.delete(cb)}
   }
 
+  last = () => {
+    return this.queue[`${this.max - 1}`]
+  }
+
   trySatisfy = () => {
     const satisfied = new Set()
     for (let [cb, lastValue] of this.waiting) {
       if (lastValue == null) {
         lastValue = 0
       }
-      if (this.queue.length - 1 >= lastValue) {
-        cb(this.queue[lastValue], lastValue + 1)
+      if (this.max > lastValue && this.max > this.min) {
+        let res
+        if (this.options.discardRead) {
+          res = this.pop()
+          lastValue = this.min
+        } else {
+          res = this.queue[`${lastValue}`]
+          lastValue += 1
+        }
+        cb(res, lastValue)
         satisfied.add(cb)
       }
     }

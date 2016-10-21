@@ -145,7 +145,7 @@ function tryEnd(handle) {
 export const run = (runnable, options = {}) => {
 
   let id = `${idSeq++}`
-  let channel = createChannel()
+  let channel = createChannel({discardRead: options.discardRead})
   const parentHandle = global[pidString]
 
   let myZone = {
@@ -177,6 +177,7 @@ export const run = (runnable, options = {}) => {
     options,
     parent: parentHandle,
     returnListeners: new Set(),
+    lastValue: null,
     catch: (errorHandler) => addToOptions('onError', errorHandler),
   }
 

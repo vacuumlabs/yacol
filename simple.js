@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import {run} from './proc'
-import {runnableFromFunction} from './utils'
+import {runnableFromFunction, randomInt} from './utils'
 import {putMessage, getMessage, getMessageSafe, onReturn} from './messaging'
 import Promise from 'bluebird'
 
@@ -15,13 +15,31 @@ const inc = function*(...args) {
   return res
 }
 
-run(function*() {
-  const handle1 = run(function*() {
-    throw new Error('yuck fou')
-  }).catch((e) => {})
-  console.log('popopo', handle1)
-  yield handle1
-}).catch((e) => {console.log('tututu')})
+const baseWait = 50
+const rep = 10
+
+const handle1 = run(function*() {
+  for (let i = 0; i < rep; i++) {
+    yield [delay, randomInt(baseWait)]
+    yield [putMessage, i]
+  }
+})
+
+const handle2 = run(function*() {
+  for (let i = 0; i < rep; i++) {
+    yield [delay, randomInt(baseWait)]
+    const msg = yield [getMessage, handle1]
+    console.log('handle2', msg)
+  }
+})
+
+const handle3 = run(function*() {
+  for (let i = 0; i < rep; i++) {
+    yield [delay, randomInt(baseWait)]
+    const msg = yield [getMessage, handle1]
+    console.log('handle3', msg)
+  }
+})
 
 /*
 run(function*() {
