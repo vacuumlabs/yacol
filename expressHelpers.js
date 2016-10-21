@@ -2,12 +2,13 @@ import {run, pushMessage, getMessage, createChannel} from './'
 
 const appToChan = new WeakMap()
 
-export function register(app, pattern, reqHandler) {
+// verb: 'use', 'get', 'post'
+export function register(app, verb, pattern, reqHandler) {
   if (!appToChan.has(app)) {
     appToChan.set(app, createChannel())
   }
   const reqChannel = appToChan.get(app)
-  app.use(pattern, (req, res) => {
+  app[verb](pattern, (req, res) => {
     pushMessage(reqChannel, [req, res, reqHandler])
   })
 }
