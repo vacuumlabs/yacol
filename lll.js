@@ -31,14 +31,15 @@ Runable:
 
 
 features to be implemented:
-  - error handling
+  - kill
   - sliding queue
-  - more effective queue
   - mock impl
-  - alts done better
   - __private__
-  - express helpers
 Done:
+  - express helpers
+  - alts done better
+  - more effective queue
+  - error handling
   - proper GC
   - alts
   - test zones

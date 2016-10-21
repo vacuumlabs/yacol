@@ -3,6 +3,7 @@ import {runnableFromFunction} from '../utils'
 import {onReturn} from '../messaging'
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
+import fs from 'fs'
 
 const delay = runnableFromFunction((time, cb) => setTimeout(() => cb(), time))
 
@@ -126,6 +127,17 @@ describe('basics', () => {
     })
     timeApprox(100)
     assert.equal(res, 1)
+  })
+
+  it('can yield fs functions directly ', (done) => {
+    run(function*() {
+      const filename = './__delete__me__'
+      yield [fs.writeFile, filename, 'much data']
+      const res = yield [fs.readFile, filename]
+      yield [fs.unlink, filename]
+      assert.equal(res.toString('utf-8'), 'much data')
+      done()
+    })
   })
 
 })

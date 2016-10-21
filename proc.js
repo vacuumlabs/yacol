@@ -1,9 +1,9 @@
 import {pushMessage, pushEnd, onReturn, createChannel} from './messaging'
-import {pidString, handleType, runnableFromFunctionType} from './constants'
+import {pidString, handleType, runnableFromFunctionType, builtinFns} from './constants'
 
 let idSeq = 0
 
-const runFromCb = (runnable, handle, parentHandle) => {
+const runFromFunction = (runnable, handle, parentHandle) => {
   setTimeout(() => {
     const rfc = runnable[0]
     const args = [...runnable].splice(1)
@@ -29,6 +29,21 @@ const runPromise = (promise, handle) => {
   }).catch((err) => {
     handleError(err, handle)
   })
+}
+
+const runBuiltin = (runnable, handle) => {
+  const first = runnable[0]
+  const args = runnable.slice(1)
+  const promise = new Promise((resolve, reject) => {
+    first(...args, (err, res) => {
+      if (err == null) {
+        resolve(res)
+      } else {
+        reject(err)
+      }
+    })
+  })
+  runPromise(promise, handle)
 }
 
 function handleError(e, handle) {
@@ -78,7 +93,6 @@ const runCoroutine = (runnable, handle) => {
     what()
     global[pidString] = oldPid
   }
-
 
   function step(val) {
     setTimeout(() => _step(val), 0)
@@ -221,13 +235,15 @@ export const run = (runnable, options = {}) => {
       typeof runnable.then === 'function') {
     runPromise(runnable, handle)
   } else if (typeof runnable === 'object' && runnable.type === runnableFromFunctionType) {
-    runFromCb([runnable], handle, parentHandle)
+    runFromFunction([runnable], handle, parentHandle)
   } else if (Array.isArray(runnable)) {
     const first = runnable[0]
     if (typeof first === 'function' && first.constructor.name === 'GeneratorFunction') {
       runCoroutine(runnable, handle, myZone)
+    } else if (typeof first === 'function' && builtinFns.has(first)) {
+      runBuiltin(runnable, handle)
     } else if (typeof first === 'object' && first.type === runnableFromFunctionType) {
-      runFromCb(runnable, handle, parentHandle)
+      runFromFunction(runnable, handle, parentHandle)
     } else {
       console.error(`unknown runnable (type: ${typeof first}),`, first)
       throw new Error('unknown runnable')
