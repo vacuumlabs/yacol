@@ -1,11 +1,9 @@
 import {run} from '../proc'
-import {runnableFromFunction} from '../utils'
+import {delay} from '../utils'
 import {onReturn} from '../messaging'
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
 import fs from 'fs'
-
-const delay = runnableFromFunction((time, cb) => setTimeout(() => cb(), time))
 
 const inc = function*(a, b) {
   yield [delay, 100]

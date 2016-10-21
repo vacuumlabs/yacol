@@ -1,8 +1,5 @@
-import {pidString, runnableFromFunctionType} from './constants'
-
-export function runnableFromFunction(fn) {
-  return ({type: runnableFromFunctionType, cb: fn})
-}
+import {pidString} from './constants'
+import Promise from 'bluebird'
 
 export function randomInt(n) {
   return Math.random() * n
@@ -12,5 +9,6 @@ export function getCurrentCoroutine() {
   return global[pidString]
 }
 
-export const delay = runnableFromFunction((time, cb) => setTimeout(() => cb(), time))
-
+export function delay(time) {
+  return Promise.delay(time)
+}

@@ -17,10 +17,6 @@ ListYieldable:
   - [builtinFn, ...args],
   - builtinFn
 
-runnableFromFunction(cb)
-  cb: (...args, cb)
-
-  returns generatorFn (Runnable)
 
 Runable:
   - generatorFn

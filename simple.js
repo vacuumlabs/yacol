@@ -1,11 +1,11 @@
 /* eslint-disable no-unused-vars */
 import {run} from './proc'
-import {runnableFromFunction, randomInt} from './utils'
+import {randomInt} from './utils'
 import {putMessage, getMessage, getMessageSafe, onReturn} from './messaging'
 import Promise from 'bluebird'
 import fs from 'fs'
 
-const delay = runnableFromFunction(([time], cb) => setTimeout(() => cb(), time))
+const delay = (time) => Promise.delay(time)
 
 const inc = function*(...args) {
   yield [delay, 100]
@@ -19,19 +19,14 @@ const inc = function*(...args) {
 const baseWait = 50
 const rep = 10
 
-/*
-fs.writeFile('sampleFile', 'much content', (err, res) => {
-  console.log(err)
-  console.log(res)
-})
-*/
+const pokus = function*() {
+  const handle1 = run([inc, 3, 4])
+  yield run([getMessage, handle1])
+}
 
 run(function*() {
-  const filename = './__delete__me__'
-  yield [fs.writeFile, filename, 'much data']
-  const res = yield [fs.readFile, filename]
-  yield [fs.unlink, filename]
-  console.log(res.toString('utf-8'))
+  yield run(pokus)
+  //yield run(true)
 })
 
 /*

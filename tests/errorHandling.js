@@ -1,10 +1,8 @@
 /* eslint-disable prefer-arrow-callback */
 import {run} from '../proc'
-import {runnableFromFunction} from '../utils'
+import {delay} from '../utils'
 import {getMessage, getMessageSafe, getReturnSafe} from '../messaging'
 import {assert} from 'chai'
-
-const delay = runnableFromFunction((time, cb) => setTimeout(() => cb(), time))
 
 describe('error handling', () => {
 

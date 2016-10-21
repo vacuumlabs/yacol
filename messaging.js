@@ -1,6 +1,5 @@
 import {channelType, handleType} from './constants'
 import {WaitingQueue} from './queue'
-import {runnableFromFunction} from './utils'
 
 function assertChannel(channel) {
   if (channel.type !== channelType) {
@@ -81,6 +80,7 @@ export function getMessageSafe(ctx, handle, errorValue = noErrorValue) {
 
 export function getMessage(ctx, chanOrHandle) {
   if (typeof chanOrHandle !== 'object' || chanOrHandle == null) {
+    console.error('first argument of getMessage should be either channel or coroutine handle, got', chanOrHandle)
     throw new Error('first argument of getMessage should be either channel or coroutine handle')
   }
   if (chanOrHandle.type === channelType) {
@@ -102,10 +102,12 @@ export function getMessage(ctx, chanOrHandle) {
   }
 }
 
-export const putMessage = runnableFromFunction(([msg], cb, parrentHandle) => {
-  pushMessage(parrentHandle.channel, msg)
-  cb()
-})
+export function putMessage(ctx, msg) {
+  return new Promise((resolve, reject) => {
+    pushMessage(ctx.parentHandle.channel, msg)
+    resolve()
+  })
+}
 
 export function pushMessage(channel, message) {
   assertChannel(channel)
