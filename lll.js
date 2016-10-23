@@ -1,4 +1,10 @@
 
+yield fetchUser(id, email) // -stacktrace (babel plugin?), -intro
+yield run(fetchUser(id, email)) // +stacktrace, -intro
+yield run(fetchUser, id, email) // +all
+yield [fetchUser, id, email] // -stacktrace, +intro
+
+
 yield [inc, run([inc, 3, 4]), run([inc, 1, 2])]
 yield [tryValue, run([getMessage, chan]), val]
 
