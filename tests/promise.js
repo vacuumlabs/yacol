@@ -28,4 +28,31 @@ describe('promise', () => {
 
   })
 
+  it('can act as a Promise', (done) => {
+    run(function*() {
+      yield Promise.delay(100)
+      yield Promise.delay(100)
+      return 10
+    }).then((res) => {
+      timeApprox(200)
+      assert.equal(res, 10)
+      done()
+    })
+  })
+
+  it('if used as a Promise, errors are propagated but not handled', (done) => {
+    let here1 = false
+    let here2 = false
+    run(function*() {
+      run(function*() {
+        throw new Error('yuck fou')
+      }).then(() => {}).catch((e) => {here1 = true})
+    }).catch((e) => {here2 = true})
+    setTimeout(() => {
+      assert.isOk(here1)
+      assert.isOk(here2)
+      done()
+    }, 100)
+  })
+
 })

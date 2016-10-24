@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import {run} from './proc'
+import {run, onReturn} from './proc'
 import {alts} from './alts'
 import {randomInt} from './utils'
 import {getMessage} from './messaging'
@@ -9,7 +9,7 @@ import fs from 'fs'
 const delay = (time) => Promise.delay(time)
 
 const inc = function*(...args) {
-  yield [delay, 100]
+  yield run(delay, 100)
   let res = 0
   for (let elem of args) {
     res += elem
@@ -20,10 +20,8 @@ const inc = function*(...args) {
 run(function*() {
   const handle1 = run(function*() {
     throw new Error('yuck fou')
-  }).catch((e) => 42)
-  const res = yield handle1
-  console.log(res)
-}).catch((e) => {console.log('cele zle')})
+  }).then(() => {}).catch((e) => {console.log('gotcha')})
+}).catch((e) => {console.log('top level caught')})
 
 /*
 run(function*() {

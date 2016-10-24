@@ -32,7 +32,7 @@ function handleError(e, handle) {
 
   function _handleError(e, handle) {
     handle.error = e
-    shouldPushEnd.set(handle, null)
+    shouldPushEnd.set(handle, pushEndNoReturnValue)
     let handler = handle.options.onError
     let processed = false
     if (handler != null) {
@@ -76,7 +76,7 @@ const runGenerator = (gen, handle) => {
   }
 
   function _step(val) {
-    if (handle.error != null) {
+    if (handle.done) {
       return
     }
     withPid(() => {
@@ -129,7 +129,8 @@ function changeProcCnt(handle, val) {
 
 function tryEnd(handle) {
   if (handle != null) {
-    if (handle.pendingSubProc === 0 && handle.locallyDone && handle.error == null) {
+    // if coroutine ended with error, pushEnd was already called
+    if (handle.pendingSubProc === 0 && handle.locallyDone && (!('error' in handle))) {
       pushEnd(handle)
     }
   }
@@ -188,11 +189,10 @@ export const run = (first, ...args) => {
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
     done: false, // generator returned and everything terminated
     //returnValue,
-    error: null,
+    //error,
     options: {},
     parent: parentHandle,
     returnListeners: new Set(),
-    lastValue: null,
     catch: (errorHandler) => addToOptions('onError', errorHandler),
     then
   }
@@ -235,10 +235,10 @@ export const run = (first, ...args) => {
 }
 
 
-const noReturnValue = {}
-function pushEnd(handle, returnValue = noReturnValue) {
+const pushEndNoReturnValue = {}
+function pushEnd(handle, returnValue = pushEndNoReturnValue) {
   assertHandle(handle)
-  if (returnValue !== noReturnValue) {
+  if (returnValue !== pushEndNoReturnValue) {
     handle.returnValue = returnValue
   }
   if (handle.done) {
@@ -254,10 +254,13 @@ export function onReturn(handle, cb) {
   assertHandle(handle)
 
   function _cb() {
-    if (handle.error) {
+    if ('error' in handle) {
       if ('returnValue' in handle) {
         cb(null, handle.returnValue)
       } else {
+        if (handle.error == null) {
+          console.error('Throwing null and undefined is not yet supported!')
+        }
         cb(handle.error)
       }
     } else {
