@@ -1,11 +1,14 @@
 {
-  "name": "coroutines",
+  "name": "yacl",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --compilers js:babel-core/register tests/*.js",
-    "test-all": "mocha --compilers js:babel-core/register tests/**"
+    "testq": "mocha --compilers js:babel-core/register tests/*.js",
+    "eslint": "eslint .",
+    "test": "npm run eslint && npm run testq",
+    "test-gc": "mocha --compilers js:babel-core/register tests/long-running/**",
+    "test-all": "npm run eslint && npm run testq && npm run test-gc"
   },
   "author": "",
   "license": "ISC",
