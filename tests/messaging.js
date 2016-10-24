@@ -29,14 +29,6 @@ describe('messaging', () => {
         }
       })
 
-      run(function*() {
-        for (let i = 0; i < rep; i++) {
-          yield run(delay, randomInt(baseWait))
-          const msg = yield run(getMessage, chan)
-          assert.equal(msg, i)
-        }
-      })
-
     }))
   }
 

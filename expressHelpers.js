@@ -2,6 +2,7 @@ import {run, pushMessage, getMessage, createChannel} from './'
 import onHeaders from 'on-headers'
 
 const appToChan = new WeakMap()
+const middlewares = new WeakMap()
 
 export function register(app, verb, pattern, reqHandler) {
   if (!appToChan.has(app)) {
@@ -13,7 +14,6 @@ export function register(app, verb, pattern, reqHandler) {
   })
 }
 
-const middleware = new WeakMap()
 
 export function* runApp(app) {
   if (!appToChan.has(app)) {
@@ -21,32 +21,29 @@ export function* runApp(app) {
   }
   const channel = appToChan.get(app)
   while (true) {
-    const [req, res, next, reqHandler] = yield [getMessage, channel]
+    const [req, res, next, reqHandler] = yield run(getMessage, channel)
 
-    if (!middleware.has(req)) {
-      const headersChannel = createChannel()
+    const onHeadersPromise = new Promise((resolve, reject) => {
+      onHeaders(res, () => resolve())
+    })
 
-      onHeaders(res, () => {
-        pushMessage(headersChannel, null)
-      })
-      middleware.set(req, {cnt: 0, chan: headersChannel})
+    if (!middlewares.has(req)) {
+      middlewares.set(req, [])
     }
 
-    const myNext = function* () {
-      middleware.get(req).cnt += 1
-      const {cnt, chan} = middleware.get(req)
-      let myIndex = cnt
+    const myNext = function* (route) {
+      const midds = middlewares.get(req)
+      midds.push(handle)
       next()
-      // wait for message pushed by onHeaders cb
-      yield [getMessage, chan]
-      // first middleware waits for n - 1 messages, second for n-2 messages, etc. Last liddleware
-      // can run immediately
-      for (let i = 0; i < middleware.get(req).cnt - myIndex; i++) {
-        yield [getMessage, chan]
+      yield onHeadersPromise
+      // When processing nth middleware, last element of midds is handle of n+1-th middleware.
+      // Last middleware does not need to wait for anyone else, it just estabilishes the above invariant.
+      if (midds[midds.length - 1] !== handle) {
+        yield midds[midds.length - 1]
+        midds.pop()
       }
-      pushMessage(chan, null)
     }
 
-    run([reqHandler, req, res, myNext])
+    const handle = run(reqHandler, req, res, myNext)
   }
 }

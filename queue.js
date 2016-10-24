@@ -1,15 +1,15 @@
-export class WaitingQueue {
+export class Queue {
 
   constructor(options = {}) {
-    this.waiting = new Map()
+    this.waiting = new Set()
     this.options = options
     this.min = 0
     this.max = 0
-    this.queue = {}
+    this.data = {}
   }
 
   push = (val) => {
-    this.queue[`${this.max}`] = val
+    this.data[`${this.max}`] = val
     this.max += 1
     this.trySatisfy()
   }
@@ -17,38 +17,24 @@ export class WaitingQueue {
   empty = () => (this.max <= this.min)
 
   pop = (val) => {
-    const result = this.queue[`${this.min}`]
-    delete this.queue[`${this.min}`]
+    const result = this.data[`${this.min}`]
+    delete this.data[`${this.min}`]
     this.min += 1
     return result
   }
 
-  next = (lastValue, cb) => {
-    this.waiting.set(cb, lastValue)
+  next = (cb) => {
+    this.waiting.add(cb)
     this.trySatisfy()
     return {dispose: () => this.waiting.delete(cb)}
   }
 
-  last = () => {
-    return this.queue[`${this.max - 1}`]
-  }
-
   trySatisfy = () => {
     const satisfied = new Set()
-    for (let [cb, lastValue] of this.waiting) {
-      if (lastValue == null) {
-        lastValue = 0
-      }
-      if (this.max > lastValue && this.max > this.min) {
-        let res
-        if (this.options.discardRead) {
-          res = this.pop()
-          lastValue = this.min
-        } else {
-          res = this.queue[`${lastValue}`]
-          lastValue += 1
-        }
-        cb(res, lastValue)
+    for (let cb of this.waiting) {
+      if (this.max > this.min) {
+        const res = this.pop()
+        cb(res)
         satisfied.add(cb)
       }
     }

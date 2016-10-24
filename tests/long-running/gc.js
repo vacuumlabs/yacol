@@ -1,5 +1,6 @@
 import {run} from '../../proc'
-import {getMessage} from '../../messaging'
+import {pushMessage, getMessage, createChannel} from '../../messaging'
+import Promise from 'bluebird'
 
 let junk = []
 for (let i = 0; i < 1000000; i++) {
@@ -26,26 +27,24 @@ describe('gc', () => {
     })
   })
 
-  it('discardRead', function(done) {
+  it('discard read values from channel', function() {
     this.timeout(60000)
-    const rep = 2000
+    return run(function*() {
+      const rep = 2000
+      const channel = createChannel()
 
-    const handle1 = run(function*() {
-      for (let i = 0; i < rep; i++) {
-        yield run(putMessage, [junk, i].join(''))
-      }
-    }, {discardRead: true})
+      run(function*() {
+        for (let i = 0; i < rep; i++) {
+          pushMessage(channel, [junk, i].join(''))
+          yield Promise.delay(0)
+        }
+      })
 
-    const handle2 = run(function*() {
-      for (let i = 0; i < rep; i++) {
-        yield run(getMessage, handle1)
-      }
-    })
-
-    run(function*() {
-      yield handle1
-      yield handle2
-      done()
+      run(function*() {
+        for (let i = 0; i < rep; i++) {
+          yield run(getMessage, channel)
+        }
+      })
     })
   })
 

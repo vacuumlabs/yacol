@@ -1,15 +1,12 @@
 import {channelType} from './constants'
-import {WaitingQueue} from './queue'
-import {getCurrentCoroutine, assertChannel} from './utils'
+import {Queue} from './queue'
+import {assertChannel} from './utils'
 
 export function getMessage(channel) {
   assertChannel(channel)
-  const handle = getCurrentCoroutine()
   return new Promise((resolve, reject) => {
-    const {lastValue} = handle
     const {queue} = channel
-    queue.next(lastValue, (val, nextElem) => {
-      handle.lastValue = nextElem
+    queue.next((val) => {
       resolve(val)
     })
   })
@@ -17,14 +14,12 @@ export function getMessage(channel) {
 
 export function pushMessage(channel, message) {
   assertChannel(channel)
-  const queue = channel.queue
-  queue.push(message)
+  channel.queue.push(message)
 }
 
-export function createChannel(options = {}) {
+export function createChannel() {
   return ({
     type: channelType,
-    queue: new WaitingQueue(options),
-    options,
+    queue: new Queue(),
   })
 }

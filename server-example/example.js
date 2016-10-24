@@ -6,25 +6,29 @@ import {run} from '../'
 const app = express()
 
 function* hello(req, res) {
-  yield [delay, 1000]
+  yield run(delay, 1000)
   res.send('hello')
 }
 
 function* world(req, res) {
-  yield [delay, 500]
+  yield run(delay, 500)
   res.send('world')
 }
 
 function* middleware1(req, res, next) {
   console.log('before req 1')
-  yield next
+  yield run(delay, 3000)
+  yield run(next)
   console.log('after req 1')
+  yield run(delay, 3000)
 }
 
 function* middleware2(req, res, next) {
   console.log('before req 2')
-  yield next
+  yield run(delay, 3000)
+  yield run(next)
   console.log('after req 2')
+  yield run(delay, 3000)
 }
 
 register(app, 'use', '*', middleware1)
@@ -33,7 +37,7 @@ register(app, 'get', '/hello', hello)
 register(app, 'get', '/world', world)
 
 run(function* () {
-  run([runApp, app])
+  run(runApp, app)
   app.listen(3000, () => {
     console.log('server started')
   })
