@@ -1,4 +1,4 @@
-import {run, pushMessage, getMessage, createChannel} from './'
+import {run, pushMessage, getMessage, createChannel, zone} from './'
 import onHeaders from 'on-headers'
 
 const appToChan = new WeakMap()
@@ -44,6 +44,9 @@ export function* runApp(app) {
       }
     }
 
-    const handle = run(reqHandler, req, res, myNext)
+    const handle = run(function*() {
+      zone.set('req', req)
+      run(reqHandler, req, res, myNext)
+    })
   }
 }

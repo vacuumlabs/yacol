@@ -69,13 +69,18 @@ describe('error handling', () => {
     }, 200)
   })
 
-  it('Yield on failed process propagates error', function(done) {
+  it('Yield on failed process does not propagate error', function(done) {
+    let here1 = false
     run(function*() {
       const handle1 = run(function*() {
         throw new Error('yuck fou')
       }).catch((e) => {})
       yield handle1
-    }).catch((e) => {assert.equal(e.message, 'yuck fou'); done()})
+    }).catch((e) => {here1 = true})
+    setTimeout(() => {
+      assert.isNotOk(here1)
+      done()
+    }, 100)
   })
 
   it('Error handler can return value', function(done) {

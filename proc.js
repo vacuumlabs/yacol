@@ -131,7 +131,7 @@ function tryEnd(handle) {
   if (handle != null) {
     // if coroutine ended with error, pushEnd was already called
     if (handle.pendingSubProc === 0 && handle.locallyDone && (!('error' in handle))) {
-      pushEnd(handle)
+      pushEnd(handle, pushEndNoReturnValue)
     }
   }
 }
@@ -236,7 +236,7 @@ export const run = (first, ...args) => {
 
 
 const pushEndNoReturnValue = {}
-function pushEnd(handle, returnValue = pushEndNoReturnValue) {
+function pushEnd(handle, returnValue) {
   assertHandle(handle)
   if (returnValue !== pushEndNoReturnValue) {
     handle.returnValue = returnValue

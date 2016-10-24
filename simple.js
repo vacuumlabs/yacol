@@ -18,10 +18,13 @@ const inc = function*(...args) {
 }
 
 run(function*() {
-  const handle1 = run(function*() {
-    throw new Error('yuck fou')
-  }).then(() => {}).catch((e) => {console.log('gotcha')})
-}).catch((e) => {console.log('top level caught')})
+  const handle = run(function*() {
+    //yield run(next)
+    yield run(inc, 1, 2)
+    throw new Error('no johns!')
+  }).catch((e) => undefined)
+  yield handle
+}).catch((e) => {console.log('hihiiiiiiiii')})
 
 /*
 run(function*() {
