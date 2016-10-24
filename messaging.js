@@ -1,12 +1,6 @@
 import {channelType} from './constants'
 import {WaitingQueue} from './queue'
-import {getCurrentCoroutine} from './utils'
-
-export function assertChannel(channel) {
-  if (channel.type !== channelType) {
-    throw new Error('argument expected to be a channel')
-  }
-}
+import {getCurrentCoroutine, assertChannel} from './utils'
 
 export function getMessage(channel) {
   assertChannel(channel)

@@ -21,10 +21,10 @@ describe('promise', () => {
 
     run(function*() {
       for (let i = 0; i < 10; i++) {
-        yield Promise.delay(100)
+        yield Promise.delay(200)
         yield Promise.reject(new Error('yuck fou'))
       }
-    }, {onError: (err) => {assert.equal(err.message, 'yuck fou'); timeApprox(100); done()}})
+    }).catch((err) => {assert.equal(err.message, 'yuck fou'); timeApprox(200); done()})
 
   })
 

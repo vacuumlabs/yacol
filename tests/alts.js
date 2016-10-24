@@ -4,7 +4,7 @@ import {assert} from 'chai'
 
 
 export const inc = function*(wait, a, b) {
-  yield [delay, wait]
+  yield run(delay, wait)
   return a + b
 }
 
@@ -24,7 +24,7 @@ describe('alts', () => {
           if (j === 0) {
             sum = a + b
           }
-          args.push([inc, time, a, b])
+          args.push(run(inc, time, a, b))
         }
         for (let j = 0; j < 100; j++) {
           const ind1 = randomInt(10)
@@ -41,8 +41,8 @@ describe('alts', () => {
           }
         }
         const channel = createChannel()
-        run([alts, channel, ...args])
-        const res = yield [getMessage, channel]
+        run(alts, channel, ...args)
+        const res = yield run(getMessage, channel)
         assert.deepEqual(res, [mini, sum])
         done()
       })

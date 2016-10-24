@@ -16,23 +16,23 @@ describe('messaging', () => {
 
       run(function*() {
         for (let i = 0; i < rep; i++) {
-          yield [delay, randomInt(baseWait * factor)]
+          yield run(delay, randomInt(baseWait * factor))
           pushMessage(chan, i)
         }
       })
 
       run(function*() {
         for (let i = 0; i < rep; i++) {
-          yield [delay, randomInt(baseWait)]
-          const msg = yield run([getMessage, chan])
+          yield run(delay, randomInt(baseWait))
+          const msg = yield run(getMessage, chan)
           assert.equal(msg, i)
         }
       })
 
       run(function*() {
         for (let i = 0; i < rep; i++) {
-          yield [delay, randomInt(baseWait)]
-          const msg = yield [getMessage, chan]
+          yield run(delay, randomInt(baseWait))
+          const msg = yield run(getMessage, chan)
           assert.equal(msg, i)
         }
       })

@@ -5,7 +5,7 @@ import {resetTimer, timeApprox} from './utils'
 import fs from 'fs'
 
 const inc = function*(a, b) {
-  yield [delay, 100]
+  yield run(delay, 100)
   return a + b
 }
 
@@ -15,8 +15,8 @@ describe('basics', () => {
 
   it('can await handle', (done) => {
     run(function*() {
-      const res = yield run([inc, 1, 2])
-      yield [delay, 100]
+      const res = yield run(inc, 1, 2)
+      yield run(delay, 100)
       timeApprox(200)
       assert.equal(res, 3)
       done()
@@ -24,7 +24,7 @@ describe('basics', () => {
   })
 
   it('can await runnable from callback', (done) => {
-    const handle = run([delay, 100])
+    const handle = run(delay, 100)
     onReturn(handle, () => {
       timeApprox(100)
       done()
@@ -34,7 +34,7 @@ describe('basics', () => {
   it('last message acts as a return value', (done) => {
     run(function*() {
       const res = yield run(function*() {
-        const res = yield [inc, 1, 2]
+        const res = yield run(inc, 1, 2)
         return res
       })
       assert.equal(res, 3)
@@ -46,10 +46,10 @@ describe('basics', () => {
     run(function*() {
       resetTimer()
       for (let i = 0; i < 3; i++) {
-        yield [delay, 100]
+        yield run(delay, 100)
       }
       timeApprox(300)
-      const val = yield [inc, 3, 4]
+      const val = yield run(inc, 3, 4)
       assert.equal(val, 7)
       timeApprox(400)
       done()
@@ -61,14 +61,14 @@ describe('basics', () => {
     let here1, here2, here3
 
     const handle1 = run(function*() {
-      yield [delay, 100]
-      const val = yield [inc, 3, 4]
+      yield run(delay, 100)
+      const val = yield run(inc, 3, 4)
       here1 = true
       return val
     })
 
     const handle2 = run(function*() {
-      yield [delay, 300]
+      yield run(delay, 300)
       const proc1Res = yield handle1
       timeApprox(300)
       assert.equal(proc1Res, 7)
@@ -94,8 +94,8 @@ describe('basics', () => {
   it('waits', (done) => {
     run(function*() {
       yield run(function*() {
-        run([delay, 200])
-        yield [delay, 100]
+        run(delay, 200)
+        yield run(delay, 100)
       })
       timeApprox(200)
       done()
@@ -107,10 +107,10 @@ describe('basics', () => {
       yield run(function*() {
         run(function*() {
           run(function*() {
-            run([delay, 200])
+            run(delay, 200)
           })
         })
-        yield [delay, 100]
+        yield run(delay, 100)
       })
       timeApprox(200)
       done()
@@ -119,7 +119,7 @@ describe('basics', () => {
 
   it('can be awaited', async () => {
     const res = await run(function*() {
-      yield [delay, 100]
+      yield run(delay, 100)
       return 1
     })
     timeApprox(100)
@@ -129,9 +129,9 @@ describe('basics', () => {
   it('can yield fs functions directly ', (done) => {
     run(function*() {
       const filename = './__delete__me__'
-      yield [fs.writeFile, filename, 'much data']
-      const res = yield [fs.readFile, filename]
-      yield [fs.unlink, filename]
+      yield run(fs.writeFile, filename, 'much data')
+      const res = yield run(fs.readFile, filename)
+      yield run(fs.unlink, filename)
       assert.equal(res.toString('utf-8'), 'much data')
       done()
     })

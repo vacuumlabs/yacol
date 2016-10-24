@@ -1,5 +1,5 @@
 import {run} from '../../proc'
-import {putMessage, getMessage} from '../../messaging'
+import {getMessage} from '../../messaging'
 
 let junk = []
 for (let i = 0; i < 1000000; i++) {
@@ -13,16 +13,14 @@ describe('gc', () => {
     this.timeout(60000)
 
     const getLargeData = function*(n) {
-      for (let i = 0; i < 10; i++) {
-        yield [putMessage, [junk, n, i].join('')]
-      }
+      return [junk, n].join('')
     }
 
     run(function*() {
-      // if all data was in RAM, the memory should suffice for 20 runs.
-      // If 200 runs pass, it's probably OK
-      for (let i = 0; i < 200; i++) {
-        yield [getLargeData, i]
+      // if all data was in RAM, the memory should suffice for ~200 runs.
+      // If 2000 runs pass, it's probably OK
+      for (let i = 0; i < 2000; i++) {
+        yield run(getLargeData, i)
       }
       done()
     })
@@ -34,13 +32,13 @@ describe('gc', () => {
 
     const handle1 = run(function*() {
       for (let i = 0; i < rep; i++) {
-        yield [putMessage, [junk, i].join('')]
+        yield run(putMessage, [junk, i].join(''))
       }
     }, {discardRead: true})
 
     const handle2 = run(function*() {
       for (let i = 0; i < rep; i++) {
-        yield [getMessage, handle1]
+        yield run(getMessage, handle1)
       }
     })
 

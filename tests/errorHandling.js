@@ -1,14 +1,13 @@
 /* eslint-disable prefer-arrow-callback */
 import {run} from '../proc'
 import {delay} from '../utils'
-import {getMessage, getMessageSafe, getReturnSafe} from '../messaging'
 import {assert} from 'chai'
 
 describe('error handling', () => {
 
   it('error handler invoked', (done) => {
     run(function*() {
-      yield [delay, 100]
+      yield run(delay, 100)
       throw new Error('yuck fou')
     }).catch((e) => {
       assert.equal(e.message, 'yuck fou')
@@ -22,7 +21,7 @@ describe('error handling', () => {
       run(function*() {
         throw new Error('yuck fou')
       }).catch((e) => {})
-      yield [delay, 10]
+      yield run(delay, 10)
     }).catch((e) => {here = true})
     setTimeout(() => {
       assert.isNotOk(here)
@@ -39,7 +38,7 @@ describe('error handling', () => {
         run(function*() {
           throw new Error('yuck fou')
         })
-        yield [delay, 10]
+        yield run(delay, 10)
         // inner run throws sooner than this is reached
         here3 = true
       }).catch((e) => {assert.equal(e.message, 'yuck fou'); here1 = true})
@@ -60,7 +59,7 @@ describe('error handling', () => {
         run(function*() {
           throw new Error('yuck fou')
         })
-        yield [delay, 100]
+        yield run(delay, 100)
       }).catch((e) => {assert.equal(e.message, 'yuck fou'); here1 = true; throw e})
     }).catch((e) => {assert.equal(e.message, 'yuck fou'); here2 = true})
     setTimeout(() => {

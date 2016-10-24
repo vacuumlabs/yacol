@@ -1,4 +1,5 @@
 import {pidString, handleType, builtinFns} from './constants'
+import {isHandle, assertHandle} from './utils'
 
 let idSeq = 0
 
@@ -10,9 +11,7 @@ const runPromise = (promise, handle) => {
   })
 }
 
-const runBuiltin = (runnable, handle) => {
-  const first = runnable[0]
-  const args = runnable.slice(1)
+const runBuiltin = (first, args, handle) => {
   const promise = new Promise((resolve, reject) => {
     first(...args, (err, res) => {
       if (err == null) {
@@ -63,9 +62,7 @@ function handleError(e, handle) {
 }
 
 
-const runCoroutine = (runnable, handle) => {
-
-  const gen = runnable[0].apply(null, runnable.slice(1))
+const runGenerator = (gen, handle) => {
 
   function withPid(what) {
     let oldPid = global[pidString]
@@ -147,7 +144,7 @@ function looksLikePromise(obj) {
 }
 
 // implementation of run
-export const run = (runnable, options = {}) => {
+export const run = (first, ...args) => {
 
   let id = `${idSeq++}`
   const parentHandle = global[pidString]
@@ -192,7 +189,7 @@ export const run = (runnable, options = {}) => {
     done: false, // generator returned and everything terminated
     //returnValue,
     error: null,
-    options,
+    options: {},
     parent: parentHandle,
     returnListeners: new Set(),
     lastValue: null,
@@ -207,52 +204,36 @@ export const run = (runnable, options = {}) => {
   })
 
   setTimeout(() => {handle.configLocked = true}, 0)
-  if (isHandle(runnable)) {
-    onReturn(runnable, (err, msg) => {
+  if (isHandle(first)) {
+    onReturn(first, (err, msg) => {
       if (err == null) {
         pushEnd(handle, msg)
       } else {
         handleError(err, handle)
       }
     })
-  } else if (typeof runnable === 'function') {
-    runCoroutine([runnable], handle)
-  } else if (looksLikePromise(runnable)) {
-    runPromise(runnable, handle)
-  } else if (Array.isArray(runnable)) {
-    const first = runnable[0]
-    const args = runnable.slice(1)
-    if (typeof first === 'function' && first.constructor.name === 'GeneratorFunction') {
-      runCoroutine(runnable, handle, myZone)
-    } else if (typeof first === 'function' && builtinFns.has(first)) {
-      runBuiltin(runnable, handle)
-    } else if (typeof first === 'function') {
-      const promise = first(...args)
-      if (!looksLikePromise(promise)) {
-        throw new Error('function should return a promise')
-      }
-      runPromise(promise, handle)
+  } else if (typeof first === 'function' && builtinFns.has(first)) {
+    runBuiltin(first, args, handle)
+  } else if (typeof first === 'function') {
+    const gen = first(...args)
+    if (looksLikePromise(gen)) {
+      runPromise(gen, handle)
+    } else if (typeof gen.next === 'function') {
+      runGenerator(gen, handle)
     } else {
-      console.error(`unknown runnable (type: ${typeof first}),`, first)
-      throw new Error('unknown runnable')
+      console.error(`unknown first argument (type: ${typeof first}),`, first)
+      throw new Error('unknown first argument')
     }
+  } else if (looksLikePromise(first)) {
+    runPromise(first, handle)
   } else {
-    console.error('runnable should be function or array, got', runnable)
-    throw new Error('unknown runnable')
+    console.error(`unknown first argument (type: ${typeof first}),`, first)
+    throw new Error('unknown first argument')
   }
 
   return handle
 }
 
-function isHandle(handle) {
-  return (typeof handle === 'object' && handle != null && handle.type === handleType)
-}
-
-function assertHandle(handle) {
-  if (!isHandle(handle)) {
-    throw new Error('argument expected to be a handle')
-  }
-}
 
 const noReturnValue = {}
 function pushEnd(handle, returnValue = noReturnValue) {
