@@ -5,7 +5,8 @@ let idSeq = 0
 
 const runPromise = (promise, handle) => {
   promise.then((res) => {
-    pushEnd(handle, res)
+    handle.returnValue = res
+    pushEnd(handle)
   }).catch((err) => {
     handleError(err, handle)
   })
@@ -28,17 +29,19 @@ function handleError(e, handle) {
 
   // first set .error attr to all errorneous channels, only then pushEnd to them to prevent
   // 'race conds'
-  const shouldPushEnd = new Map()
+  const shouldPushEnd = new Set()
 
   function _handleError(e, handle) {
+    if ('error' in handle) {
+      throw new Error('handleError should not be called more than once')
+    }
     handle.error = e
-    shouldPushEnd.set(handle, pushEndNoReturnValue)
+    shouldPushEnd.add(handle)
     let handler = handle.options.onError
     let processed = false
     if (handler != null) {
       try {
-        let errorValue = handler(e)
-        shouldPushEnd.set(handle, errorValue)
+        handle.returnValue = handler(e)
         processed = true
       } catch (errorCaught) {
         e = errorCaught
@@ -56,8 +59,8 @@ function handleError(e, handle) {
   }
 
   _handleError(e, handle)
-  for (let [handle, value] of shouldPushEnd) {
-    pushEnd(handle, value)
+  for (let handle of shouldPushEnd) {
+    pushEnd(handle)
   }
 }
 
@@ -108,7 +111,8 @@ const runGenerator = (gen, handle) => {
             } else {
               // Error on subprocess may or may not cause crash of a current process.
               // If the current process is still OK, but it tries to yield from crashed subprocess,
-              // the error occurs.
+              // the error occurs. If the parent process is crashed, we don't want to run
+              // handleError once again.
               if (handle.error == null) {
                 handleError(err, handle)
               }
@@ -131,7 +135,7 @@ function tryEnd(handle) {
   if (handle != null) {
     // if coroutine ended with error, pushEnd was already called
     if (handle.pendingSubProc === 0 && handle.locallyDone && (!('error' in handle))) {
-      pushEnd(handle, pushEndNoReturnValue)
+      pushEnd(handle)
     }
   }
 }
@@ -207,7 +211,8 @@ export const run = (first, ...args) => {
   if (isHandle(first)) {
     onReturn(first, (err, msg) => {
       if (err == null) {
-        pushEnd(handle, msg)
+        handle.returnValue = msg
+        pushEnd(handle)
       } else {
         handleError(err, handle)
       }
@@ -234,13 +239,8 @@ export const run = (first, ...args) => {
   return handle
 }
 
-
-const pushEndNoReturnValue = {}
-function pushEnd(handle, returnValue) {
+function pushEnd(handle) {
   assertHandle(handle)
-  if (returnValue !== pushEndNoReturnValue) {
-    handle.returnValue = returnValue
-  }
   if (handle.done) {
     throw new Error('cannot end channel more than once')
   }
