@@ -1,5 +1,4 @@
-import {run} from '../../proc'
-import {pushMessage, getMessage, createChannel} from '../../messaging'
+import {run, pushMessage, getMessage, createChannel} from '../../dist'
 import Promise from 'bluebird'
 
 let junk = []

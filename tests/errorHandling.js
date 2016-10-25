@@ -1,6 +1,6 @@
 /* eslint-disable prefer-arrow-callback */
-import {run} from '../proc'
-import {delay} from '../utils'
+import {run} from '../dist'
+import {delay} from '../dist/utils'
 import {assert} from 'chai'
 
 describe('error handling', () => {

@@ -1,5 +1,5 @@
-import {run, onReturn} from '../proc'
-import {delay} from '../utils'
+import {run, onReturn} from '../dist'
+import {delay} from '../dist/utils'
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
 import fs from 'fs'

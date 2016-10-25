@@ -1,14 +1,17 @@
 {
-  "name": "yacl",
-  "version": "1.0.0",
+  "name": "yacol",
+  "version": "0.1.1",
   "description": "",
-  "main": "index.js",
+  "main": "dist/",
   "scripts": {
     "testq": "mocha --compilers js:babel-core/register tests/*.js",
     "eslint": "eslint .",
     "test": "npm run eslint && npm run testq",
     "test-gc": "mocha --compilers js:babel-core/register tests/long-running/**",
-    "test-all": "npm run eslint && npm run testq && npm run test-gc"
+    "test-all": "npm run eslint && npm run testq && npm run test-gc",
+    "build": "rm -rf dist; babel src --out-dir dist --copy-files",
+    "mock": "rm -rf dist; ln -s src dist",
+    "prepublish": "npm run build && npm run test"
   },
   "author": "",
   "license": "ISC",

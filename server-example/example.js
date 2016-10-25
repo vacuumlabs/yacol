@@ -1,7 +1,7 @@
 import express from 'express'
-import {register, runApp} from '../expressHelpers'
-import {delay} from '../utils'
-import {run} from '../'
+import {register, runApp} from '../dist/expressHelpers'
+import {delay} from '../dist/utils'
+import {run} from '../dist'
 
 const app = express()
 

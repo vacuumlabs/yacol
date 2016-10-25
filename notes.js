@@ -1,4 +1,3 @@
-
 yield fetchUser(id, email) // -stacktrace (babel plugin?), -intro
 yield run(fetchUser(id, email)) // +stacktrace, -intro
 yield run(fetchUser, id, email) // +all
@@ -47,5 +46,3 @@ Done:
   - test zones
   - terminate
   - return value by return
-
-

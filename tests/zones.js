@@ -1,4 +1,4 @@
-import {run, zone} from '..'
+import {run, zone} from '../dist'
 
 import {assert} from 'chai'
 

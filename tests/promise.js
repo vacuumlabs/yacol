@@ -1,5 +1,5 @@
 import Promise from 'bluebird'
-import {run} from '../proc'
+import {run} from '../dist'
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
 

@@ -1,5 +1,5 @@
-import {run, alts, getMessage, createChannel} from '../'
-import {randomInt, delay} from '../utils'
+import {run, alts, getMessage, createChannel} from '../dist'
+import {randomInt, delay} from '../dist/utils'
 import {assert} from 'chai'
 
 

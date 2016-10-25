@@ -1,6 +1,5 @@
-import {run} from '../proc'
-import {randomInt, delay} from '../utils'
-import {pushMessage, getMessage, createChannel} from '../messaging'
+import {run, pushMessage, getMessage, createChannel} from '../dist'
+import {randomInt, delay} from '../dist/utils'
 import {assert} from 'chai'
 
 describe('messaging', () => {

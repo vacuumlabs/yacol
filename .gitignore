@@ -1,6 +1,9 @@
 # NPM
 node_modules/
 
+#compiled
+dist/
+
 # Logs
 *.log
 
