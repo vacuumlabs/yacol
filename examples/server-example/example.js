@@ -1,34 +1,34 @@
 import express from 'express'
-import {register, runApp} from '../dist/expressHelpers'
-import {delay} from '../dist/utils'
-import {run} from '../dist'
+import {expressHelpers, run} from 'yacol'
+import Promise from 'bluebird'
 
+const {register, runApp} = expressHelpers
 const app = express()
 
 function* hello(req, res) {
-  yield run(delay, 1000)
+  yield Promise.delay(1000)
   res.send('hello')
 }
 
 function* world(req, res) {
-  yield run(delay, 500)
+  yield Promise.delay(1000)
   res.send('world')
 }
 
 function* middleware1(req, res, next) {
   console.log('before req 1')
-  yield run(delay, 3000)
+  yield Promise.delay(3000)
   yield run(next)
   console.log('after req 1')
-  yield run(delay, 3000)
+  yield Promise.delay(3000)
 }
 
 function* middleware2(req, res, next) {
   console.log('before req 2')
-  yield run(delay, 3000)
+  yield Promise.delay(3000)
   yield run(next)
   console.log('after req 2')
-  yield run(delay, 3000)
+  yield Promise.delay(3000)
 }
 
 register(app, 'use', '*', middleware1)

@@ -2,7 +2,7 @@
 node_modules/
 
 #compiled
-dist/
+dist
 
 # Logs
 *.log
@@ -25,3 +25,5 @@ pids
 .DS_Store
 
 .sublimelinterrc
+
+__local.js

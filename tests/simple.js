@@ -1,7 +1,6 @@
 import {run, onReturn} from '../dist'
-import {delay} from '../dist/utils'
 import {assert} from 'chai'
-import {resetTimer, timeApprox} from './utils'
+import {resetTimer, timeApprox, delay} from './utils'
 import fs from 'fs'
 
 const inc = function*(a, b) {

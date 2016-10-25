@@ -1,5 +1,5 @@
 import {run, pushMessage, getMessage, createChannel} from '../dist'
-import {randomInt, delay} from '../dist/utils'
+import {randomInt, delay} from './utils'
 import {assert} from 'chai'
 
 describe('messaging', () => {

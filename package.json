@@ -1,6 +1,6 @@
 {
   "name": "yacol",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "",
   "main": "dist/",
   "scripts": {
@@ -16,19 +16,20 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "on-headers": "^1.0.1"
+  },
+  "devDependencies": {
     "babel-core": "^6.17.0",
     "babel-eslint": "^7.0.0",
     "babel-preset-node6": "^11.0.0",
     "babel-preset-stage-0": "^6.16.0",
     "babel-watch": "^2.0.3-rc0",
+    "bluebird": "^3.4.6",
     "chai": "^3.5.0",
     "eslint": "^3.7.0",
     "eslint-plugin-babel": "^3.3.0",
     "eslint-plugin-import": "^2.0.0",
-    "express": "^4.14.0",
     "mocha": "^3.1.2",
-    "nodemon": "^1.10.2",
-    "on-headers": "^1.0.1",
-    "pg": "^6.1.0"
+    "nodemon": "^1.10.2"
   }
 }
