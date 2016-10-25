@@ -27,9 +27,9 @@ export function* runApp(app) {
     })
 
     const myNext = function* (route) {
-      next(route)
       let midds = middlewares.get(req)
       const which = midds.length
+      next(route)
       yield onHeadersPromise
       if (which >= midds.length) {
         throw new Error('No non-middleware handler exists for this route')
