@@ -27,7 +27,7 @@ export function* runApp(app) {
     })
 
     const myNext = function* (route) {
-      next()
+      next(route)
       let midds = middlewares.get(req)
       const which = midds.length
       yield onHeadersPromise
