@@ -11,6 +11,6 @@
   "dependencies": {
     "babel-watch": "^2.0.3",
     "express": "^4.14.0",
-    "yacol": "^0.1.1"
+    "yacol": "0.1.2"
   }
 }

@@ -27,14 +27,17 @@ const runBuiltin = (first, args, handle) => {
 
 function handleError(e, handle) {
 
+  // quite often, there may be multiple sources of errors. If handle is already in error state
+  // do nothing
+  if ('error' in handle) {
+    return
+  }
+
   // first set .error attr to all errorneous channels, only then pushEnd to them to prevent
   // 'race conds'
   const shouldPushEnd = new Set()
 
   function _handleError(e, handle) {
-    if ('error' in handle) {
-      throw new Error('handleError should not be called more than once')
-    }
     handle.error = e
     shouldPushEnd.add(handle)
     let handler = handle.options.onError
@@ -109,13 +112,7 @@ const runGenerator = (gen, handle) => {
             if (err == null) {
               step(ret)
             } else {
-              // Error on subprocess may or may not cause crash of a current process.
-              // If the current process is still OK, but it tries to yield from crashed subprocess,
-              // the error occurs. If the parent process is crashed, we don't want to run
-              // handleError once again.
-              if (handle.error == null) {
-                handleError(err, handle)
-              }
+              handleError(err, handle)
             }
           })
         }
