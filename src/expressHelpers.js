@@ -44,6 +44,9 @@ export function* runApp(app) {
         middlewares.set(req, [])
       }
       const midds = middlewares.get(req)
+      if (midds.length > 0) {
+        handle.parent = midds[midds.length - 1]
+      }
       midds.push(handle)
     }).catch((e) => {console.error(e)})
   }
