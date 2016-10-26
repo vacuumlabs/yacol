@@ -6,9 +6,11 @@ export function zoneGet(key) {
     if (zone.public.has(key)) {
       return zone.public.get(key)
     } else {
-      zone = zone.parentZone
-      if (zone == null) {
+      const parent = zone.handle.parent
+      if (parent == null) {
         break
+      } else {
+        zone = parent.zone
       }
     }
   }

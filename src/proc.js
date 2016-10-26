@@ -153,7 +153,7 @@ export const run = (first, ...args) => {
 
   let myZone = {
     public: new Map(),
-    parentZone: parentHandle == null ? null : parentHandle.zone
+    // handle: to be specified later
   }
 
   function addToOptions(key, val) {
@@ -197,6 +197,8 @@ export const run = (first, ...args) => {
     catch: (errorHandler) => addToOptions('onError', errorHandler),
     then
   }
+
+  myZone.handle = handle
 
   changeProcCnt(parentHandle, 1)
   onReturn(handle, (err, res) => {

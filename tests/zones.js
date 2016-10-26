@@ -9,9 +9,11 @@ describe('zones', () => {
     run(function*() {
       zone.set('a', 'aa')
       assert.equal(zone.get('a'), 'aa')
+      assert.equal(zone.get('unknown'), undefined)
       yield run(function*() {
         yield run(function*() {
           assert.equal(zone.get('a'), 'aa')
+          assert.equal(zone.get('unknown'), undefined)
         })
         assert.equal(zone.get('a'), 'aa')
         zone.set('a', 'b')
