@@ -1,5 +1,5 @@
 import express from 'express'
-import {expressHelpers, run, zone} from 'yacol'
+import {expressHelpers, run, context} from 'yacol'
 import Promise from 'bluebird'
 
 const {register, runApp} = expressHelpers
@@ -10,8 +10,8 @@ function* hello(req, res) {
   res.send('hello')
 }
 
-function* context(req, res) {
-  res.send(zone.get('hello'))
+function* helloContext(req, res) {
+  res.send(context.get('hello'))
 }
 
 function* world(req, res) {
@@ -21,7 +21,7 @@ function* world(req, res) {
 
 function* greetingMiddleware(req, res, next) {
   console.log('Howdy, I\'m greeting middleware')
-  zone.set('hello', 'hi from context')
+  context.set('hello', 'hi from context')
   yield run(next)
 }
 
@@ -44,7 +44,7 @@ function* worldMiddleware2(req, res, next) {
 register(app, 'use', '*', greetingMiddleware)
 
 register(app, 'get', '/hello', hello)
-register(app, 'get', '/context', context)
+register(app, 'get', '/context', helloContext)
 
 register(app, 'use', '/world', worldMiddleware1)
 register(app, 'use', '/world', worldMiddleware2)

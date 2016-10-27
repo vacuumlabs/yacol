@@ -184,7 +184,7 @@ export const run = (first, ...args) => {
   const handle = {
     type: handleType,
     id,
-    zone: myZone,
+    context: myZone,
     pendingSubProc: 0,
     locallyDone: false, // generator returned
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started

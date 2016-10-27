@@ -1,4 +1,4 @@
-import {run, pushMessage, getMessage, createChannel, zone} from './'
+import {run, pushMessage, getMessage, createChannel, context} from './'
 import onHeaders from 'on-headers'
 
 const appToChan = new WeakMap()
@@ -38,7 +38,7 @@ export function* runApp(app) {
     }
 
     run(function*() {
-      zone.set('request', req)
+      context.set('request', req)
       const handle = run(reqHandler, req, res, myNext)
       if (!middlewares.has(req)) {
         middlewares.set(req, [])
