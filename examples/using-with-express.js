@@ -26,18 +26,18 @@ function* greetingMiddleware(req, res, next) {
 }
 
 function* worldMiddleware1(req, res, next) {
-  console.log('before req 1')
+  console.log('middleware 1 before')
   yield Promise.delay(3000)
   yield run(next)
-  console.log('after req 1')
+  console.log('middleware 1 after')
   yield Promise.delay(3000)
 }
 
 function* worldMiddleware2(req, res, next) {
-  console.log('before req 2')
+  console.log('middleware 2 before')
   yield Promise.delay(3000)
   yield run(next)
-  console.log('after req 2')
+  console.log('middleware 2 after')
   yield Promise.delay(3000)
 }
 
