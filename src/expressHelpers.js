@@ -45,6 +45,7 @@ export function* runApp(app) {
       }
       const midds = middlewares.get(req)
       if (midds.length > 0) {
+        // setting handle's parrent manually - kids, don't try this at home!
         handle.parent = midds[midds.length - 1]
       }
       midds.push(handle)
