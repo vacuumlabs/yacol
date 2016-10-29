@@ -319,14 +319,10 @@ export function onReturn(cor, cb) {
 
   function _cb() {
     if ('error' in cor) {
-      if ('returnValue' in cor) {
-        cb(null, cor.returnValue)
-      } else {
-        if (cor.error == null) {
-          console.error('Throwing null and undefined is not yet supported!')
-        }
-        cb(cor.error)
+      if (cor.error == null) {
+        console.error('Throwing null and undefined is not yet supported!')
       }
+      cb(cor.error)
     } else {
       cb(null, cor.returnValue)
     }
