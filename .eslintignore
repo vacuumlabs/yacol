@@ -2,3 +2,4 @@ node_modules
 examples
 notes.js
 dist
+__local.js

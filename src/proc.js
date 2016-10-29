@@ -103,23 +103,36 @@ const runGenerator = (gen, handle) => {
         } else {
           nxt = nxt.value
           let childHandle
-          if (isHandle(nxt)) {
-            childHandle = nxt
-          } else {
-            childHandle = run(nxt)
-          }
-          onReturn(childHandle, (err, ret) => {
-            if (err == null) {
-              step(ret)
-            } else {
+          // We're repeating the logic from `runPromise` here. It would be nice just to `run` the
+          // promise and handle it standard way, however, there is a bluebird-related problem with
+          // such implementation: this way `runPromise` will start only in the next event loop and if the
+          // (rejected) Promise does not have its error handler attached by that time, Bluebird will
+          // mistakenly treat the error as unhandled
+          if (looksLikePromise(nxt)) {
+            nxt.catch((err) => {
               handleError(err, handle)
+            }).then((res) => {step(res)})
+          } else {
+            if (isHandle(nxt)) {
+              childHandle = nxt
+            } else {
+              childHandle = run(nxt)
             }
-          })
+            onReturn(childHandle, (err, ret) => {
+              if (err == null) {
+                step(ret)
+              } else {
+                handleError(err, handle)
+              }
+            })
+          }
         }
       }
     })
   }
-  step(null)
+  // from the moment user calls run() we've already waited for the next event-loop to get here. At
+  // this point, we can start execution immediately.
+  _step()
 }
 
 function changeProcCnt(handle, val) {
@@ -142,11 +155,13 @@ function looksLikePromise(obj) {
     typeof obj === 'object' &&
     typeof obj.then === 'function' &&
     typeof obj.catch === 'function'
-  )
+  ) && !isHandle(obj)
 }
 
-// implementation of run
-export const run = (first, ...args) => {
+// creates coroutine handle, and collects all the options which can be specified via .then, .catch,
+// etc. Delagates the actual running to runLater
+
+export function run(first, ...args) {
 
   let id = `${idSeq++}`
   const parentHandle = global[pidString]
@@ -206,7 +221,14 @@ export const run = (first, ...args) => {
     tryEnd(parentHandle)
   })
 
-  setTimeout(() => {handle.configLocked = true}, 0)
+  setTimeout(() => runLater(handle, first, ...args), 0)
+
+  return handle
+}
+
+function runLater(handle, first, ...args) {
+  // the coroutine is to be started, so no more messing with config from now on
+  handle.configLocked = true
   if (isHandle(first)) {
     onReturn(first, (err, msg) => {
       if (err == null) {
@@ -235,7 +257,6 @@ export const run = (first, ...args) => {
     throw new Error('unknown first argument')
   }
 
-  return handle
 }
 
 function pushEnd(handle) {
