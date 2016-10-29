@@ -26,9 +26,8 @@ const runBuiltin = (cor, first, args) => {
 
 function handleError(cor, err) {
 
-  // quite often, there may be multiple sources of errors. If cor is already in error state
-  // do nothing
-  if (cor.done) {
+  // cor may already be ended for various reasons. In such a case, do nothing
+  if (isDone(cor)) {
     return
   }
 
@@ -43,9 +42,7 @@ function handleError(cor, err) {
   const shouldPushEnd = new Set()
 
   function _handleError(cor, err) {
-    if (cor.done) {
-      return
-    }
+    if (isDone(cor)) {return}
     const options = {}
     let handler = cor.options.onError
     let processed
@@ -94,9 +91,7 @@ const runGenerator = (cor, gen) => {
   }
 
   function _step(val) {
-    if (cor.done) {
-      return
-    }
+    if (isDone(cor)) {return}
     withPid(() => {
       let nxt
       try {
@@ -149,7 +144,7 @@ const runGenerator = (cor, gen) => {
 
 function tryEnd(cor) {
   if (cor != null) {
-    if (cor.children.size === 0 && cor.locallyDone && (!cor.done)) {
+    if (cor.children.size === 0 && cor.locallyDone && !isDone(cor)) {
       setDone(cor, {returnValue: cor.returnValuePending})
     }
   }
@@ -182,7 +177,7 @@ function unLink(child) {
 }
 
 function isDone(corr) {
-  return ('returnValue' in corr || 'error' in corr)
+  return (('returnValue' in corr) || ('error' in corr))
 }
 
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
@@ -227,29 +222,27 @@ export function run(first, ...args) {
     type: corType,
     id,
     context: myZone,
-    locallyDone: false, // generator returned
+    locallyDone: false, // generator has returned
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
-    /*
-     * coroutine generator and all coroutine children have finished (either succesfully, or with an
-     * error)
-     */
-    done: false,
-    /*
-     * returnValue: The value that will be yielded from the coroutine. Can be specified by return
-     * statement or error handler. Return value present is semanticaly equivalent to done = true
-     */
-    /*
-     * error: if present, the coroutine failed. Error present implies done = true
-    */
     options: {},
-    //parent,
     children: new Set(),
     fn: first,
     args: args,
     stacktrace: getStacktrace(),
     returnListeners: new Set(),
     catch: (errorHandler) => addToOptions('onError', errorHandler),
-    then
+    then,
+    /*
+     * returnValue: The value that will be yielded from the coroutine. Can be specified by return
+     * statement or error handler. Return value present is semanticaly equivalent to done = true
+     *
+     * returnValuePending: value returned from a generator, but not yet assigned to returnValue,
+     * because children are still computing
+     *
+     * error: if present, the coroutine failed.
+     *
+     * parent: parent coroutine
+    */
   }
 
   myZone.cor = cor
@@ -300,7 +293,7 @@ function runLater(cor, first, ...args) {
 
 function setDone(cor, options = {}) {
   assertCor(cor)
-  if (cor.done) {
+  if (isDone(cor)) {
     throw new Error('cannot end channel more than once')
   }
   let e = ('error' in options)
@@ -314,7 +307,6 @@ function setDone(cor, options = {}) {
   } else {
     throw new Error('Internal error: either error or return value must be specified')
   }
-  cor.done = true
   setTimeout(() => {
     for (let listener of cor.returnListeners) {
       listener()
@@ -339,7 +331,7 @@ export function onReturn(cor, cb) {
       cb(null, cor.returnValue)
     }
   }
-  if (cor.done) {
+  if (isDone(cor)) {
     _cb()
   } else {
     cor.returnListeners.add(_cb)
