@@ -3,7 +3,7 @@ import {isCor, assertCor} from './utils'
 
 let idSeq = 0
 
-const runPromise = (promise, cor) => {
+const runPromise = (cor, promise) => {
   promise.then((res) => {
     cor.returnValue = res
     pushEnd(cor)
@@ -12,7 +12,7 @@ const runPromise = (promise, cor) => {
   })
 }
 
-const runBuiltin = (first, args, cor) => {
+const runBuiltin = (cor, first, args) => {
   const promise = new Promise((resolve, reject) => {
     first(...args, (err, res) => {
       if (err == null) {
@@ -22,7 +22,7 @@ const runBuiltin = (first, args, cor) => {
       }
     })
   })
-  runPromise(promise, cor)
+  runPromise(cor, promise)
 }
 
 function handleError(cor, err) {
@@ -71,7 +71,7 @@ function handleError(cor, err) {
 }
 
 
-const runGenerator = (gen, cor) => {
+const runGenerator = (cor, gen) => {
 
   function withPid(what) {
     let oldPid = global[pidString]
@@ -250,13 +250,13 @@ function runLater(cor, first, ...args) {
       }
     })
   } else if (typeof first === 'function' && builtinFns.has(first)) {
-    runBuiltin(first, args, cor)
+    runBuiltin(cor, first, args)
   } else if (typeof first === 'function') {
     const gen = first(...args)
     if (looksLikePromise(gen)) {
-      runPromise(gen, cor)
+      runPromise(cor, gen)
     } else if (typeof gen.next === 'function') {
-      runGenerator(gen, cor)
+      runGenerator(cor, gen)
     } else {
       console.error(`unknown first argument (type: ${typeof first}),`, first)
       throw new Error('unknown first argument')
