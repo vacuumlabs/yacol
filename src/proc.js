@@ -25,7 +25,7 @@ const runBuiltin = (first, args, handle) => {
   runPromise(promise, handle)
 }
 
-function handleError(e, handle) {
+function handleError(err, handle) {
 
   // quite often, there may be multiple sources of errors. If handle is already in error state
   // do nothing
@@ -33,35 +33,38 @@ function handleError(e, handle) {
     return
   }
 
+  // for logging purposes it's handy to remember, at what handle the error happened. However,
+  // attaching this directly to err.handle would spam the console
+  Object.defineProperty(err, 'handle', {value: handle})
+
   // first set .error attr to all errorneous channels, only then pushEnd to them to prevent
   // 'race conds'
   const shouldPushEnd = new Set()
 
-  function _handleError(e, handle) {
-    handle.error = e
+  function _handleError(err, handle) {
+    handle.error = err
     shouldPushEnd.add(handle)
     let handler = handle.options.onError
     let processed = false
     if (handler != null) {
       try {
-        handle.returnValue = handler(e)
+        handle.returnValue = handler(err)
         processed = true
       } catch (errorCaught) {
-        e = errorCaught
+        err = errorCaught
       }
     }
     if (!processed) {
       if (handle.parent == null) {
-        // uncaught error on the top level
-        console.error('unhandled error occured:', e)
-        throw e
+        console.error('unhandled error occured:', err)
+        throw err
       } else {
-        _handleError(e, handle.parent)
+        _handleError(err, handle.parent)
       }
     }
   }
 
-  _handleError(e, handle)
+  _handleError(err, handle)
   for (let handle of shouldPushEnd) {
     pushEnd(handle)
   }
@@ -158,6 +161,11 @@ function looksLikePromise(obj) {
   ) && !isHandle(obj)
 }
 
+function getStacktrace() {
+  const e = new Error()
+  return e.stack
+}
+
 // creates coroutine handle, and collects all the options which can be specified via .then, .catch,
 // etc. Delagates the actual running to runLater
 
@@ -208,6 +216,9 @@ export function run(first, ...args) {
     //error,
     options: {},
     parent: parentHandle,
+    fn: first,
+    args: args,
+    stacktrace: getStacktrace(),
     returnListeners: new Set(),
     catch: (errorHandler) => addToOptions('onError', errorHandler),
     then
