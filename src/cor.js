@@ -138,16 +138,10 @@ const runGenerator = (cor, gen) => {
   _step()
 }
 
-function changeProcCnt(cor, val) {
-  if (cor != null) {
-    cor.pendingSubProc += val
-  }
-}
-
 function tryEnd(cor) {
   if (cor != null) {
     // if coroutine ended with error, pushEnd was already called
-    if (cor.pendingSubProc === 0 && cor.locallyDone && (!('error' in cor))) {
+    if (cor.children.size === 0 && cor.locallyDone && (!('error' in cor))) {
       pushEnd(cor)
     }
   }
@@ -164,6 +158,19 @@ function looksLikePromise(obj) {
 function getStacktrace() {
   const e = new Error()
   return e.stack
+}
+
+function makeLink(child, parent) {
+  child.parent = parent
+  parent.children.add(child)
+}
+
+function unLink(child) {
+  const found = child.parent.children.delete(child)
+  if (!found) {
+    throw new Error('Coroutine library internal error: inconsistent child-parent tree')
+  }
+  delete child.parent
 }
 
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
@@ -208,14 +215,14 @@ export function run(first, ...args) {
     type: corType,
     id,
     context: myZone,
-    pendingSubProc: 0,
     locallyDone: false, // generator returned
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
     done: false, // generator returned and everything terminated
     //returnValue,
     //error,
     options: {},
-    parent: parentCor,
+    //parent,
+    children: new Set(),
     fn: first,
     args: args,
     stacktrace: getStacktrace(),
@@ -225,12 +232,13 @@ export function run(first, ...args) {
   }
 
   myZone.cor = cor
-
-  changeProcCnt(parentCor, 1)
-  onReturn(cor, (err, res) => {
-    changeProcCnt(parentCor, -1)
-    tryEnd(parentCor)
-  })
+  if (parentCor != null) {
+    makeLink(cor, parentCor)
+    onReturn(cor, (err, res) => {
+      unLink(cor)
+      tryEnd(parentCor)
+    })
+  }
 
   setTimeout(() => runLater(cor, first, ...args), 0)
 
