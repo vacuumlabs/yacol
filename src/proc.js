@@ -8,7 +8,7 @@ const runPromise = (promise, handle) => {
     handle.returnValue = res
     pushEnd(handle)
   }).catch((err) => {
-    handleError(err, handle)
+    handleError(handle, err)
   })
 }
 
@@ -25,7 +25,7 @@ const runBuiltin = (first, args, handle) => {
   runPromise(promise, handle)
 }
 
-function handleError(err, handle) {
+function handleError(handle, err) {
 
   // quite often, there may be multiple sources of errors. If handle is already in error state
   // do nothing
@@ -41,7 +41,7 @@ function handleError(err, handle) {
   // 'race conds'
   const shouldPushEnd = new Set()
 
-  function _handleError(err, handle) {
+  function _handleError(handle, err) {
     handle.error = err
     shouldPushEnd.add(handle)
     let handler = handle.options.onError
@@ -59,12 +59,12 @@ function handleError(err, handle) {
         console.error('unhandled error occured:', err)
         throw err
       } else {
-        _handleError(err, handle.parent)
+        _handleError(handle.parent, err)
       }
     }
   }
 
-  _handleError(err, handle)
+  _handleError(handle, err)
   for (let handle of shouldPushEnd) {
     pushEnd(handle)
   }
@@ -93,7 +93,7 @@ const runGenerator = (gen, handle) => {
       try {
         nxt = gen.next(val)
       } catch (err) {
-        handleError(err, handle)
+        handleError(handle, err)
       }
       if (nxt != null) {
         if (nxt.done) {
@@ -113,7 +113,7 @@ const runGenerator = (gen, handle) => {
           // mistakenly treat the error as unhandled
           if (looksLikePromise(nxt)) {
             nxt.catch((err) => {
-              handleError(err, handle)
+              handleError(handle, err)
             }).then((res) => {step(res)})
           } else {
             if (isHandle(nxt)) {
@@ -125,7 +125,7 @@ const runGenerator = (gen, handle) => {
               if (err == null) {
                 step(ret)
               } else {
-                handleError(err, handle)
+                handleError(handle, err)
               }
             })
           }
@@ -246,7 +246,7 @@ function runLater(handle, first, ...args) {
         handle.returnValue = msg
         pushEnd(handle)
       } else {
-        handleError(err, handle)
+        handleError(handle, err)
       }
     })
   } else if (typeof first === 'function' && builtinFns.has(first)) {
