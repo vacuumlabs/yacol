@@ -1,5 +1,5 @@
-import {pidString, handleType, builtinFns} from './constants'
-import {isHandle, assertHandle} from './utils'
+import {pidString, corType, builtinFns} from './constants'
+import {isCor, assertCor} from './utils'
 
 let idSeq = 0
 
@@ -116,7 +116,7 @@ const runGenerator = (gen, handle) => {
               handleError(handle, err)
             }).then((res) => {step(res)})
           } else {
-            if (isHandle(nxt)) {
+            if (isCor(nxt)) {
               childHandle = nxt
             } else {
               childHandle = run(nxt)
@@ -158,7 +158,7 @@ function looksLikePromise(obj) {
     typeof obj === 'object' &&
     typeof obj.then === 'function' &&
     typeof obj.catch === 'function'
-  ) && !isHandle(obj)
+  ) && !isCor(obj)
 }
 
 function getStacktrace() {
@@ -205,7 +205,7 @@ export function run(first, ...args) {
   }
 
   const handle = {
-    type: handleType,
+    type: corType,
     id,
     context: myZone,
     pendingSubProc: 0,
@@ -240,7 +240,7 @@ export function run(first, ...args) {
 function runLater(handle, first, ...args) {
   // the coroutine is to be started, so no more messing with config from now on
   handle.configLocked = true
-  if (isHandle(first)) {
+  if (isCor(first)) {
     onReturn(first, (err, msg) => {
       if (err == null) {
         handle.returnValue = msg
@@ -271,7 +271,7 @@ function runLater(handle, first, ...args) {
 }
 
 function pushEnd(handle) {
-  assertHandle(handle)
+  assertCor(handle)
   if (handle.done) {
     throw new Error('cannot end channel more than once')
   }
@@ -282,7 +282,7 @@ function pushEnd(handle) {
 }
 
 export function onReturn(handle, cb) {
-  assertHandle(handle)
+  assertCor(handle)
 
   function _cb() {
     if ('error' in handle) {

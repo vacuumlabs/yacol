@@ -1,15 +1,15 @@
-import {pidString, handleType, channelType} from './constants'
+import {pidString, corType, channelType} from './constants'
 
 export function getCurrentCoroutine() {
   return global[pidString]
 }
 
-export function isHandle(handle) {
-  return (typeof handle === 'object' && handle != null && handle.type === handleType)
+export function isCor(handle) {
+  return (typeof handle === 'object' && handle != null && handle.type === corType)
 }
 
-export function assertHandle(handle) {
-  if (!isHandle(handle)) {
+export function assertCor(handle) {
+  if (!isCor(handle)) {
     throw new Error('argument expected to be a handle')
   }
 }
