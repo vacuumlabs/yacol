@@ -29,8 +29,8 @@ const regexBlacklist = [
   '^timers.js$',
   'babel-register/lib/node.js$',
   'babel-cli/lib/_babel-node.js$',
-  'yacol/src/proc.js$',
-  'yacol/dist/proc.js$',
+  'yacol/src/cor.js$',
+  'yacol/dist/cor.js$',
 ]
 
 export function prettyStacktrace(stacktrace) {

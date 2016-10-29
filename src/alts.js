@@ -1,5 +1,5 @@
 import {pushMessage} from './messaging'
-import {run} from './proc'
+import {run} from './cor'
 import {assertHandle, assertChannel} from './utils'
 
 export const alts = function*(channel, ...args) {
