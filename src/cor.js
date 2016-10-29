@@ -5,8 +5,7 @@ let idSeq = 0
 
 const runPromise = (cor, promise) => {
   promise.then((res) => {
-    cor.returnValue = res
-    setDone(cor)
+    setDone(cor, {returnValue: res})
   }).catch((err) => {
     handleError(cor, err)
   })
@@ -47,18 +46,23 @@ function handleError(cor, err) {
     if (cor.done) {
       return
     }
-    cor.error = err
-    shouldPushEnd.add(cor)
+    const options = {}
     let handler = cor.options.onError
-    let processed = false
+    let processed
     if (handler != null) {
       try {
-        cor.returnValue = handler(err)
+        options.returnValue = handler(err)
         processed = true
       } catch (errorCaught) {
         err = errorCaught
+        options.error = err
+        processed = false
       }
+    } else {
+      options.error = err
+      processed = false
     }
+    shouldPushEnd.add([cor, options])
     if (!processed) {
       if (cor.parent == null) {
         console.error('unhandled error occured:', err)
@@ -70,8 +74,9 @@ function handleError(cor, err) {
   }
 
   _handleError(cor, err)
-  for (let cor of shouldPushEnd) {
-    setDone(cor)
+
+  for (let [cor, options] of shouldPushEnd) {
+    setDone(cor, options)
   }
 }
 
@@ -104,7 +109,7 @@ const runGenerator = (cor, gen) => {
           if (cor.locallyDone) {
             throw new Error('myZone.done was already set to true')
           }
-          cor.returnValue = nxt.value
+          cor.returnValuePending = nxt.value
           cor.locallyDone = true
           tryEnd(cor)
         } else {
@@ -144,9 +149,8 @@ const runGenerator = (cor, gen) => {
 
 function tryEnd(cor) {
   if (cor != null) {
-    // if coroutine ended with error, setDone was already called
-    if (cor.children.size === 0 && cor.locallyDone && (!('error' in cor))) {
-      setDone(cor)
+    if (cor.children.size === 0 && cor.locallyDone && (!cor.done)) {
+      setDone(cor, {returnValue: cor.returnValuePending})
     }
   }
 }
@@ -175,6 +179,10 @@ function unLink(child) {
     throw new Error('Coroutine library internal error: inconsistent child-parent tree')
   }
   delete child.parent
+}
+
+function isDone(corr) {
+  return ('returnValue' in corr || 'error' in corr)
 }
 
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
@@ -264,8 +272,7 @@ function runLater(cor, first, ...args) {
   if (isCor(first)) {
     onReturn(first, (err, msg) => {
       if (err == null) {
-        cor.returnValue = msg
-        setDone(cor)
+        setDone(cor, {returnValue: msg})
       } else {
         handleError(cor, err)
       }
@@ -296,10 +303,23 @@ function setDone(cor, options = {}) {
   if (cor.done) {
     throw new Error('cannot end channel more than once')
   }
-  cor.done = true
-  for (let listener of cor.returnListeners) {
-    listener()
+  let e = ('error' in options)
+  let r = ('returnValue' in options)
+  if (e && !r) {
+    cor.error = options.error
+  } else if (r && !e) {
+    cor.returnValue = options.returnValue
+  } else if (r && e) {
+    throw new Error('Internal error: both error and returnValue are specified')
+  } else {
+    throw new Error('Internal error: either error or return value must be specified')
   }
+  cor.done = true
+  setTimeout(() => {
+    for (let listener of cor.returnListeners) {
+      listener()
+    }
+  }, 0)
 }
 
 export function onReturn(cor, cb) {
