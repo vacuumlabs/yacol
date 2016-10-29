@@ -14,7 +14,7 @@ export function resetTimer() {
 
 export function timeApprox(target) {
   const delta = getTime() - timeStart
-  assert.approximately(delta, target, target * 0.15)
+  assert.approximately(delta, target, target * 0.2)
 }
 
 export function randomInt(n) {

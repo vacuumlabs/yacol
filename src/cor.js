@@ -1,4 +1,4 @@
-import {pidString, corType, builtinFns} from './constants'
+import {pidString, corType, builtinFns, terminatedErrType} from './constants'
 import {isCor, assertCor} from './utils'
 
 let idSeq = 0
@@ -6,7 +6,7 @@ let idSeq = 0
 const runPromise = (cor, promise) => {
   promise.then((res) => {
     cor.returnValue = res
-    pushEnd(cor)
+    setDone(cor)
   }).catch((err) => {
     handleError(cor, err)
   })
@@ -29,19 +29,24 @@ function handleError(cor, err) {
 
   // quite often, there may be multiple sources of errors. If cor is already in error state
   // do nothing
-  if ('error' in cor) {
+  if (cor.done) {
     return
   }
 
   // for logging purposes it's handy to remember, at what cor the error happened. However,
   // attaching this directly to err.cor would spam the console
-  Object.defineProperty(err, 'cor', {value: cor})
+  if (!('cor' in err)) {
+    Object.defineProperty(err, 'cor', {value: cor})
+  }
 
-  // first set .error attr to all errorneous channels, only then pushEnd to them to prevent
+  // first set .error attr to all errorneous channels, only then setDone to them to prevent
   // 'race conds'
   const shouldPushEnd = new Set()
 
   function _handleError(cor, err) {
+    if (cor.done) {
+      return
+    }
     cor.error = err
     shouldPushEnd.add(cor)
     let handler = cor.options.onError
@@ -66,10 +71,9 @@ function handleError(cor, err) {
 
   _handleError(cor, err)
   for (let cor of shouldPushEnd) {
-    pushEnd(cor)
+    setDone(cor)
   }
 }
-
 
 const runGenerator = (cor, gen) => {
 
@@ -140,9 +144,9 @@ const runGenerator = (cor, gen) => {
 
 function tryEnd(cor) {
   if (cor != null) {
-    // if coroutine ended with error, pushEnd was already called
+    // if coroutine ended with error, setDone was already called
     if (cor.children.size === 0 && cor.locallyDone && (!('error' in cor))) {
-      pushEnd(cor)
+      setDone(cor)
     }
   }
 }
@@ -217,9 +221,18 @@ export function run(first, ...args) {
     context: myZone,
     locallyDone: false, // generator returned
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
-    done: false, // generator returned and everything terminated
-    //returnValue,
-    //error,
+    /*
+     * coroutine generator and all coroutine children have finished (either succesfully, or with an
+     * error)
+     */
+    done: false,
+    /*
+     * returnValue: The value that will be yielded from the coroutine. Can be specified by return
+     * statement or error handler. Return value present is semanticaly equivalent to done = true
+     */
+    /*
+     * error: if present, the coroutine failed. Error present implies done = true
+    */
     options: {},
     //parent,
     children: new Set(),
@@ -252,7 +265,7 @@ function runLater(cor, first, ...args) {
     onReturn(first, (err, msg) => {
       if (err == null) {
         cor.returnValue = msg
-        pushEnd(cor)
+        setDone(cor)
       } else {
         handleError(cor, err)
       }
@@ -278,7 +291,7 @@ function runLater(cor, first, ...args) {
 
 }
 
-function pushEnd(cor) {
+function setDone(cor, options = {}) {
   assertCor(cor)
   if (cor.done) {
     throw new Error('cannot end channel more than once')
@@ -314,4 +327,24 @@ export function onReturn(cor, cb) {
   return {dispose: () => {
     cor.returnListeners.delete(_cb)
   }}
+}
+
+export function kill(cor) {
+
+  const toKill = []
+
+  function traverse(cor) {
+    toKill.push(cor)
+    for (let child of cor.children) {
+      traverse(child)
+    }
+  }
+
+  traverse(cor)
+  const err = new Error('Coroutine was terminated')
+  err.type = terminatedErrType
+
+  for (let cor of toKill) {
+    handleError(cor, err)
+  }
 }

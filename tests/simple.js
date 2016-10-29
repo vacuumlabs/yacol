@@ -136,4 +136,18 @@ describe('basics', () => {
     })
   })
 
+  it('onReturn on already errored coroutine', (done) => {
+    run(function*() {
+      const c = run(function*() {
+        yield run(delay, 100)
+        throw new Error('yuck fou')
+      }).catch((e) => {})
+      yield run(delay, 200)
+      onReturn(c, (err, res) => {
+        assert.equal(err, null)
+        done()
+      })
+    })
+  })
+
 })
