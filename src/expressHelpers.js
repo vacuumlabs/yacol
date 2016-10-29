@@ -39,16 +39,16 @@ export function* runApp(app) {
 
     run(function*() {
       context.set('request', req)
-      const handle = run(reqHandler, req, res, myNext)
+      const cor = run(reqHandler, req, res, myNext)
       if (!middlewares.has(req)) {
         middlewares.set(req, [])
       }
       const midds = middlewares.get(req)
       if (midds.length > 0) {
-        // setting handle's parrent manually - kids, don't try this at home!
-        handle.parent = midds[midds.length - 1]
+        // setting cor's parrent manually - kids, don't try this at home!
+        cor.parent = midds[midds.length - 1]
       }
-      midds.push(handle)
+      midds.push(cor)
     }).catch((e) => {console.error(e)})
   }
 }

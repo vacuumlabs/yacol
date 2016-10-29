@@ -4,13 +4,13 @@ export function getCurrentCoroutine() {
   return global[pidString]
 }
 
-export function isCor(handle) {
-  return (typeof handle === 'object' && handle != null && handle.type === corType)
+export function isCor(cor) {
+  return (typeof cor === 'object' && cor != null && cor.type === corType)
 }
 
-export function assertCor(handle) {
-  if (!isCor(handle)) {
-    throw new Error('argument expected to be a handle')
+export function assertCor(cor) {
+  if (!isCor(cor)) {
+    throw new Error('argument expected to be a cor')
   }
 }
 
@@ -75,19 +75,19 @@ export function prettyStacktrace(stacktrace) {
 
 function prettyError(e) {
   const res = []
-  let handle = e.handle
+  let cor = e.cor
   res.push('--- ERROR ----')
   res.push(`Error: ${e.message}`)
   res.push(prettyStacktrace(e.stack))
   while (true) {
-    if (handle == null) {
+    if (cor == null) {
       return res
     }
-    const name = handle.fn.name || '[Function]'
-    const args = `${handle.args}`
+    const name = cor.fn.name || '[Function]'
+    const args = `${cor.args}`
     res.push(`${name}, [${args}]`)
-    res.push(prettyStacktrace(handle.stacktrace))
-    handle = handle.parent
+    res.push(prettyStacktrace(cor.stacktrace))
+    cor = cor.parent
   }
 }
 

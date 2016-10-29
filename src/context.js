@@ -6,7 +6,7 @@ export function contextGet(key) {
     if (context.public.has(key)) {
       return context.public.get(key)
     } else {
-      const parent = context.handle.parent
+      const parent = context.cor.parent
       if (parent == null) {
         break
       } else {

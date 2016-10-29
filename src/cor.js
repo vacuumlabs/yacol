@@ -3,16 +3,16 @@ import {isCor, assertCor} from './utils'
 
 let idSeq = 0
 
-const runPromise = (promise, handle) => {
+const runPromise = (promise, cor) => {
   promise.then((res) => {
-    handle.returnValue = res
-    pushEnd(handle)
+    cor.returnValue = res
+    pushEnd(cor)
   }).catch((err) => {
-    handleError(handle, err)
+    handleError(cor, err)
   })
 }
 
-const runBuiltin = (first, args, handle) => {
+const runBuiltin = (first, args, cor) => {
   const promise = new Promise((resolve, reject) => {
     first(...args, (err, res) => {
       if (err == null) {
@@ -22,60 +22,60 @@ const runBuiltin = (first, args, handle) => {
       }
     })
   })
-  runPromise(promise, handle)
+  runPromise(promise, cor)
 }
 
-function handleError(handle, err) {
+function handleError(cor, err) {
 
-  // quite often, there may be multiple sources of errors. If handle is already in error state
+  // quite often, there may be multiple sources of errors. If cor is already in error state
   // do nothing
-  if ('error' in handle) {
+  if ('error' in cor) {
     return
   }
 
-  // for logging purposes it's handy to remember, at what handle the error happened. However,
-  // attaching this directly to err.handle would spam the console
-  Object.defineProperty(err, 'handle', {value: handle})
+  // for logging purposes it's handy to remember, at what cor the error happened. However,
+  // attaching this directly to err.cor would spam the console
+  Object.defineProperty(err, 'cor', {value: cor})
 
   // first set .error attr to all errorneous channels, only then pushEnd to them to prevent
   // 'race conds'
   const shouldPushEnd = new Set()
 
-  function _handleError(handle, err) {
-    handle.error = err
-    shouldPushEnd.add(handle)
-    let handler = handle.options.onError
+  function _handleError(cor, err) {
+    cor.error = err
+    shouldPushEnd.add(cor)
+    let handler = cor.options.onError
     let processed = false
     if (handler != null) {
       try {
-        handle.returnValue = handler(err)
+        cor.returnValue = handler(err)
         processed = true
       } catch (errorCaught) {
         err = errorCaught
       }
     }
     if (!processed) {
-      if (handle.parent == null) {
+      if (cor.parent == null) {
         console.error('unhandled error occured:', err)
         throw err
       } else {
-        _handleError(handle.parent, err)
+        _handleError(cor.parent, err)
       }
     }
   }
 
-  _handleError(handle, err)
-  for (let handle of shouldPushEnd) {
-    pushEnd(handle)
+  _handleError(cor, err)
+  for (let cor of shouldPushEnd) {
+    pushEnd(cor)
   }
 }
 
 
-const runGenerator = (gen, handle) => {
+const runGenerator = (gen, cor) => {
 
   function withPid(what) {
     let oldPid = global[pidString]
-    global[pidString] = handle
+    global[pidString] = cor
     what()
     global[pidString] = oldPid
   }
@@ -85,7 +85,7 @@ const runGenerator = (gen, handle) => {
   }
 
   function _step(val) {
-    if (handle.done) {
+    if (cor.done) {
       return
     }
     withPid(() => {
@@ -93,27 +93,27 @@ const runGenerator = (gen, handle) => {
       try {
         nxt = gen.next(val)
       } catch (err) {
-        handleError(handle, err)
+        handleError(cor, err)
       }
       if (nxt != null) {
         if (nxt.done) {
-          if (handle.locallyDone) {
+          if (cor.locallyDone) {
             throw new Error('myZone.done was already set to true')
           }
-          handle.returnValue = nxt.value
-          handle.locallyDone = true
-          tryEnd(handle)
+          cor.returnValue = nxt.value
+          cor.locallyDone = true
+          tryEnd(cor)
         } else {
           nxt = nxt.value
           let childHandle
           // We're repeating the logic from `runPromise` here. It would be nice just to `run` the
-          // promise and handle it standard way, however, there is a bluebird-related problem with
+          // promise and cor it standard way, however, there is a bluebird-related problem with
           // such implementation: this way `runPromise` will start only in the next event loop and if the
           // (rejected) Promise does not have its error handler attached by that time, Bluebird will
           // mistakenly treat the error as unhandled
           if (looksLikePromise(nxt)) {
             nxt.catch((err) => {
-              handleError(handle, err)
+              handleError(cor, err)
             }).then((res) => {step(res)})
           } else {
             if (isCor(nxt)) {
@@ -125,7 +125,7 @@ const runGenerator = (gen, handle) => {
               if (err == null) {
                 step(ret)
               } else {
-                handleError(handle, err)
+                handleError(cor, err)
               }
             })
           }
@@ -138,17 +138,17 @@ const runGenerator = (gen, handle) => {
   _step()
 }
 
-function changeProcCnt(handle, val) {
-  if (handle != null) {
-    handle.pendingSubProc += val
+function changeProcCnt(cor, val) {
+  if (cor != null) {
+    cor.pendingSubProc += val
   }
 }
 
-function tryEnd(handle) {
-  if (handle != null) {
+function tryEnd(cor) {
+  if (cor != null) {
     // if coroutine ended with error, pushEnd was already called
-    if (handle.pendingSubProc === 0 && handle.locallyDone && (!('error' in handle))) {
-      pushEnd(handle)
+    if (cor.pendingSubProc === 0 && cor.locallyDone && (!('error' in cor))) {
+      pushEnd(cor)
     }
   }
 }
@@ -166,34 +166,34 @@ function getStacktrace() {
   return e.stack
 }
 
-// creates coroutine handle, and collects all the options which can be specified via .then, .catch,
+// creates coroutine cor, and collects all the options which can be specified via .then, .catch,
 // etc. Delagates the actual running to runLater
 
 export function run(first, ...args) {
 
   let id = `${idSeq++}`
-  const parentHandle = global[pidString]
+  const parentCor = global[pidString]
 
   let myZone = {
     public: new Map(),
-    // handle: to be specified later
+    // cor: to be specified later
   }
 
   function addToOptions(key, val) {
-    if (handle.configLocked) {
+    if (cor.configLocked) {
       console.error('Cannot modify options after coroutine started. Ignoring the command')
-    } else if (key in handle.options) {
+    } else if (key in cor.options) {
       console.error('Cannot override coroutine options. Ignoring the command')
     } else {
-      handle.options[key] = val
+      cor.options[key] = val
     }
-    return handle
+    return cor
   }
 
   function then(fn) {
     return new Promise((resolve, reject) => {
       onReturn(
-        handle,
+        cor,
         (err, res) => {
           if (err == null) {
             resolve(res)
@@ -204,7 +204,7 @@ export function run(first, ...args) {
     }).then(fn)
   }
 
-  const handle = {
+  const cor = {
     type: corType,
     id,
     context: myZone,
@@ -215,7 +215,7 @@ export function run(first, ...args) {
     //returnValue,
     //error,
     options: {},
-    parent: parentHandle,
+    parent: parentCor,
     fn: first,
     args: args,
     stacktrace: getStacktrace(),
@@ -224,45 +224,45 @@ export function run(first, ...args) {
     then
   }
 
-  myZone.handle = handle
+  myZone.cor = cor
 
-  changeProcCnt(parentHandle, 1)
-  onReturn(handle, (err, res) => {
-    changeProcCnt(parentHandle, -1)
-    tryEnd(parentHandle)
+  changeProcCnt(parentCor, 1)
+  onReturn(cor, (err, res) => {
+    changeProcCnt(parentCor, -1)
+    tryEnd(parentCor)
   })
 
-  setTimeout(() => runLater(handle, first, ...args), 0)
+  setTimeout(() => runLater(cor, first, ...args), 0)
 
-  return handle
+  return cor
 }
 
-function runLater(handle, first, ...args) {
+function runLater(cor, first, ...args) {
   // the coroutine is to be started, so no more messing with config from now on
-  handle.configLocked = true
+  cor.configLocked = true
   if (isCor(first)) {
     onReturn(first, (err, msg) => {
       if (err == null) {
-        handle.returnValue = msg
-        pushEnd(handle)
+        cor.returnValue = msg
+        pushEnd(cor)
       } else {
-        handleError(handle, err)
+        handleError(cor, err)
       }
     })
   } else if (typeof first === 'function' && builtinFns.has(first)) {
-    runBuiltin(first, args, handle)
+    runBuiltin(first, args, cor)
   } else if (typeof first === 'function') {
     const gen = first(...args)
     if (looksLikePromise(gen)) {
-      runPromise(gen, handle)
+      runPromise(gen, cor)
     } else if (typeof gen.next === 'function') {
-      runGenerator(gen, handle)
+      runGenerator(gen, cor)
     } else {
       console.error(`unknown first argument (type: ${typeof first}),`, first)
       throw new Error('unknown first argument')
     }
   } else if (looksLikePromise(first)) {
-    runPromise(first, handle)
+    runPromise(first, cor)
   } else {
     console.error(`unknown first argument (type: ${typeof first}),`, first)
     throw new Error('unknown first argument')
@@ -270,40 +270,40 @@ function runLater(handle, first, ...args) {
 
 }
 
-function pushEnd(handle) {
-  assertCor(handle)
-  if (handle.done) {
+function pushEnd(cor) {
+  assertCor(cor)
+  if (cor.done) {
     throw new Error('cannot end channel more than once')
   }
-  handle.done = true
-  for (let listener of handle.returnListeners) {
+  cor.done = true
+  for (let listener of cor.returnListeners) {
     listener()
   }
 }
 
-export function onReturn(handle, cb) {
-  assertCor(handle)
+export function onReturn(cor, cb) {
+  assertCor(cor)
 
   function _cb() {
-    if ('error' in handle) {
-      if ('returnValue' in handle) {
-        cb(null, handle.returnValue)
+    if ('error' in cor) {
+      if ('returnValue' in cor) {
+        cb(null, cor.returnValue)
       } else {
-        if (handle.error == null) {
+        if (cor.error == null) {
           console.error('Throwing null and undefined is not yet supported!')
         }
-        cb(handle.error)
+        cb(cor.error)
       }
     } else {
-      cb(null, handle.returnValue)
+      cb(null, cor.returnValue)
     }
   }
-  if (handle.done) {
+  if (cor.done) {
     _cb()
   } else {
-    handle.returnListeners.add(_cb)
+    cor.returnListeners.add(_cb)
   }
   return {dispose: () => {
-    handle.returnListeners.delete(_cb)
+    cor.returnListeners.delete(_cb)
   }}
 }
