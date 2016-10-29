@@ -1,16 +1,23 @@
-import {pushMessage} from './messaging'
-import {run} from './cor'
-import {assertCor, assertChannel} from './utils'
+import {run, onReturn} from './cor'
+import {createChannel, pushMessage, getMessage} from './messaging'
+import {assertCor} from './utils'
 
-export const alts = function*(channel, ...args) {
-  assertChannel(channel)
+export const alts = function*(...args) {
+  const channel = createChannel()
   for (let i = 0; i < args.length; i++) {
-    run(function*() {
-      assertCor(args[i])
-      const res = yield args[i]
-      pushMessage(channel, [i, res])
+    assertCor(args[i])
+    onReturn(args[i], (err, res) => {
+      if (err != null) {
+        pushMessage(channel, {error: [i, res]})
+      } else {
+        pushMessage(channel, {result: [i, res]})
+      }
     })
   }
-
+  const res = yield run(getMessage, channel)
+  if ('error' in res) {
+    throw res.error
+  } else {
+    return res.result
+  }
 }
-
