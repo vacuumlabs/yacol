@@ -12,9 +12,9 @@ const runPromise = (cor, promise) => {
   })
 }
 
-const runBuiltin = (cor, first, args) => {
+const runBuiltin = (cor, runnable, args) => {
   const promise = new Promise((resolve, reject) => {
-    first(...args, (err, res) => {
+    runnable(...args, (err, res) => {
       if (err == null) {
         resolve(res)
       } else {
@@ -107,7 +107,7 @@ const runGenerator = (cor, gen) => {
             return
           } else if (isCor(nxt.value)) {
             pushMessage(cor.effects, {
-              runnable: nxt.value.fn,
+              runnable: nxt.value.runnable,
               args: nxt.value.args,
               done: nxt.done
             })
@@ -218,7 +218,7 @@ function resolvePatched(cor, runnable) {
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
 // etc. Delagates the actual running to runLater
 
-export function run(first, ...args) {
+export function run(runnable, ...args) {
 
   let id = `${idSeq++}`
   const parentCor = global[pidString]
@@ -285,7 +285,7 @@ export function run(first, ...args) {
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
     options: {}, // .catch, .inspect, etc are used to populate this object with info customizing the run
     children: new Set(),
-    fn: first,
+    runnable, // runnable, args and stacktrace are for introspection and debug purposes
     args: args,
     stacktrace: getStacktrace(),
     returnListeners: new Set(),
@@ -321,40 +321,40 @@ export function run(first, ...args) {
 
   // if parent in inspect mode, don't run the coroutine
   if (!(parentCor != null && parentCor.options.inspectMode)) {
-    setTimeout(() => runLater(cor, first, ...args), 0)
+    setTimeout(() => runLater(cor, runnable, ...args), 0)
   }
 
   return cor
 }
 
-function runLater(cor, first, ...args) {
+function runLater(cor, runnable, ...args) {
   // the coroutine is to be started, so no more messing with config from now on
   cor.configLocked = true
-  first = resolvePatched(cor, first)
-  if (isCor(first)) {
-    onReturn(first, (err, msg) => {
+  runnable = resolvePatched(cor, runnable)
+  if (isCor(runnable)) {
+    onReturn(runnable, (err, msg) => {
       if (err == null) {
         setDone(cor, {returnValue: msg})
       } else {
         handleError(cor, err)
       }
     })
-  } else if (typeof first === 'function' && builtinFns.has(first)) {
-    runBuiltin(cor, first, args)
-  } else if (typeof first === 'function') {
-    const gen = first(...args)
+  } else if (typeof runnable === 'function' && builtinFns.has(runnable)) {
+    runBuiltin(cor, runnable, args)
+  } else if (typeof runnable === 'function') {
+    const gen = runnable(...args)
     if (looksLikePromise(gen)) {
       runPromise(cor, gen)
     } else if (typeof gen.next === 'function') {
       runGenerator(cor, gen)
     } else {
-      console.error(`unknown first argument (type: ${typeof first}),`, first)
+      console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)
       throw new Error('unknown first argument')
     }
-  } else if (looksLikePromise(first)) {
-    runPromise(first, cor)
+  } else if (looksLikePromise(runnable)) {
+    runPromise(runnable, cor)
   } else {
-    console.error(`unknown first argument (type: ${typeof first}),`, first)
+    console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)
     throw new Error('unknown first argument')
   }
 

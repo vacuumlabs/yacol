@@ -83,7 +83,7 @@ function prettyError(e) {
     if (cor == null) {
       return res
     }
-    const name = cor.fn.name || '[Function]'
+    const name = cor.runnable.name || '[Function]'
     const args = `${cor.args}`
     res.push(`${name}, [${args}]`)
     res.push(prettyStacktrace(cor.stacktrace))
