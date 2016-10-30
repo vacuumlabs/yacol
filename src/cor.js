@@ -202,6 +202,19 @@ function isDone(corr) {
   return (('returnValue' in corr) || ('error' in corr))
 }
 
+function resolvePatched(cor, runnable) {
+  while (true) {
+    if (cor.patchData != null && cor.patchData.has(runnable)) {
+      return cor.patchData.get(runnable)
+    }
+    cor = cor.parent
+    if (cor == null) {
+      break
+    }
+  }
+  return runnable
+}
+
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
 // etc. Delagates the actual running to runLater
 
@@ -247,6 +260,23 @@ export function run(first, ...args) {
     return cor
   }
 
+  function patch(...args) {
+    if (cor.patchData != null) {
+      throw new Error('For your safety, you cannot patch single coroutine more than once')
+    }
+    cor.patchData = new Map()
+    for (let arg of args) {
+      if (!(Array.isArray(arg) && arg.length === 2)) {
+        throw new Error('all arguments of patch must be arrays of size 2')
+      }
+      if (cor.patchData.has(arg)) {
+        throw new Error('For your safety, you cannot patch single runnable more than once')
+      }
+      cor.patchData.set(arg[0], arg[1])
+    }
+    return cor
+  }
+
   const cor = {
     type: corType,
     id,
@@ -261,6 +291,7 @@ export function run(first, ...args) {
     returnListeners: new Set(),
     then,
     catch: (errorHandler) => addToOptions('onError', errorHandler),
+    patch,
     inspect,
     /*
      * in inspect mode:
@@ -299,6 +330,7 @@ export function run(first, ...args) {
 function runLater(cor, first, ...args) {
   // the coroutine is to be started, so no more messing with config from now on
   cor.configLocked = true
+  first = resolvePatched(cor, first)
   if (isCor(first)) {
     onReturn(first, (err, msg) => {
       if (err == null) {
