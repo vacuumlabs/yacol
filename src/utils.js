@@ -85,7 +85,8 @@ function prettyError(e) {
     }
     const name = cor.runnable.name || '[Function]'
     const args = `${cor.args}`
-    res.push(`${name}, [${args}]`)
+    res.push('')
+    res.push(`runnable: ${name}, args: [${args}]`)
     res.push(prettyStacktrace(cor.stacktrace))
     cor = cor.parent
   }
