@@ -1,4 +1,5 @@
 import {pidString, corType, builtinFns, terminatedErrType} from './constants'
+import {createChannel, pushMessage, getMessage} from './messaging'
 import {isCor, assertCor} from './utils'
 
 let idSeq = 0
@@ -79,6 +80,10 @@ function handleError(cor, err) {
 
 const runGenerator = (cor, gen) => {
 
+  if (cor.options.inspectMode) {
+    cor.step = step
+  }
+
   function withPid(what) {
     let oldPid = global[pidString]
     global[pidString] = cor
@@ -96,7 +101,24 @@ const runGenerator = (cor, gen) => {
       let nxt
       try {
         nxt = gen.next(val)
+        if (cor.options.inspectMode) {
+          if (nxt.done) {
+            pushMessage(cor.effects, nxt)
+            return
+          } else if (isCor(nxt.value)) {
+            pushMessage(cor.effects, {
+              runnable: nxt.value.fn,
+              args: nxt.value.args,
+              done: nxt.done
+            })
+            return
+          }
+        }
       } catch (err) {
+        if (cor.options.inspectMode) {
+          pushMessage(cor.effects, {error: err, done: true})
+          return
+        }
         handleError(cor, err)
       }
       if (nxt != null) {
@@ -109,17 +131,17 @@ const runGenerator = (cor, gen) => {
           tryEnd(cor)
         } else {
           nxt = nxt.value
-          let childHandle
-          // We're repeating the logic from `runPromise` here. It would be nice just to `run` the
-          // promise and cor it standard way, however, there is a bluebird-related problem with
-          // such implementation: this way `runPromise` will start only in the next event loop and if the
-          // (rejected) Promise does not have its error handler attached by that time, Bluebird will
-          // mistakenly treat the error as unhandled
           if (looksLikePromise(nxt)) {
+            // We're repeating the logic from `runPromise` here. It would be nice just to `run` the
+            // promise and cor it standard way, however, there is a bluebird-related problem with
+            // such implementation: this way `runPromise` will start only in the next event loop and if the
+            // (rejected) Promise does not have its error handler attached by that time, Bluebird will
+            // mistakenly treat the error as unhandled
             nxt.catch((err) => {
               handleError(cor, err)
             }).then((res) => {step(res)})
           } else {
+            let childHandle
             if (isCor(nxt)) {
               childHandle = nxt
             } else {
@@ -218,30 +240,42 @@ export function run(first, ...args) {
     }).then(fn)
   }
 
+  function inspect() {
+    addToOptions('inspectMode', true)
+    cor.effects = createChannel()
+    cor.getEffect = () => run(getMessage, cor.effects)
+    return cor
+  }
+
   const cor = {
     type: corType,
     id,
     context: myZone,
     locallyDone: false, // generator has returned
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
-    options: {},
+    options: {}, // .catch, .inspect, etc are used to populate this object with info customizing the run
     children: new Set(),
     fn: first,
     args: args,
     stacktrace: getStacktrace(),
     returnListeners: new Set(),
-    catch: (errorHandler) => addToOptions('onError', errorHandler),
     then,
+    catch: (errorHandler) => addToOptions('onError', errorHandler),
+    inspect,
     /*
-     * returnValue: The value that will be yielded from the coroutine. Can be specified by return
+     * in inspect mode:
+     *   `step`: step function
+     *   `effects`: channel for pushing the effects
+     *
+     * `returnValue`: The value that will be yielded from the coroutine. Can be specified by return
      * statement or error handler. Return value present is semanticaly equivalent to done = true
      *
-     * returnValuePending: value returned from a generator, but not yet assigned to returnValue,
+     * `returnValuePending`: value returned from a generator, but not yet assigned to returnValue,
      * because children are still computing
      *
-     * error: if present, the coroutine failed.
+     * `error`: if present, the coroutine failed.
      *
-     * parent: parent coroutine
+     * `parent`: parent coroutine
     */
   }
 
@@ -254,7 +288,10 @@ export function run(first, ...args) {
     })
   }
 
-  setTimeout(() => runLater(cor, first, ...args), 0)
+  // if parent in inspect mode, don't run the coroutine
+  if (!(parentCor != null && parentCor.options.inspectMode)) {
+    setTimeout(() => runLater(cor, first, ...args), 0)
+  }
 
   return cor
 }
