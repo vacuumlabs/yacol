@@ -1,7 +1,15 @@
 import {run, prettyErrorLog} from 'yacol'
 
-function* a(n) {
+function doSync2() {
   throw new Error('yuck fou')
+}
+
+function doSync1() {
+  doSync2()
+}
+
+function* a(n) {
+  doSync1(n)
 }
 
 function* b(n) {
