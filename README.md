@@ -195,7 +195,19 @@ run(function*() {
 ```
 
 # Killing coroutines
-... to be written
+
+Simply call `kill(coroutine)` and that's it, coroutine will be synchronously ended. If you are in
+the middle of some non-coroutine work i.e. you are waiting for yielded promise which is fetching some
+data, the fetch will (naturally) continue, however:
+- neither its result nor its error is accessible by anyone (we're trying to mimic that the work was
+  terminated. Errors after `kill` moment do not matter)
+- consequent operations (i.e. some other fetches) of the killed coroutine are not executed
+
+Semantically, killing is equivalent to all coroutines (and its children) getting to the erroneous
+state (as if all coroutines throw a TerminationError). This error has to be handled somewhere -
+typically you want to check for this specific error type and rethrow other possible errors. For this
+purpose, you can use simply `killHandler` already written in the `yacol`. Check out
+`examples/kill.js` for more details.
 
 # Context
 Every coroutine has its context - that's simple ES6 Map object.
@@ -212,7 +224,34 @@ OCaml - we can write continuations-like code without any babel transpilling! Che
 `examples/patch.js` to see, what weather is in my city right now!
 
 # Inspect
-... to be written
+If you call `.inspect()` on the coroutine, you can insect, what effects the coroutine tries to
+execute. Moreover you can pass fake responses to these effects. For example, having a coroutine such
+as (notice the `.inspect()` call at its end):
+
+``` javascript
+const cor = run(function*() {
+  const weatherBa = yield run(getWeather, 'Bratislava')
+  const weatherVi = yield run(getWeather, 'Vienna')
+  return `${weatherBa} in Bratislava, ${weatherVi} in Vienna`
+}).inspect()
+
+you can interact with the coroutine such as:
+
+``` javascript
+run(function*() {
+  let effect
+  effect = yield cor.getEffect()
+  assert.deepEqual(effect, {runnable: getWeather, args: ['Bratislava']})
+  cor.step('sunny')
+  effect = yield cor.getEffect()
+  assert.deepEqual(effect, {runnable: getWeather, args: ['Vienna']})
+  cor.step('rainy')
+  effect = yield cor.getEffect()
+  assert.deepEqual(effect, {value: 'sunny in Bratislava, rainy in Vienna', done: true})
+})
+```
+this way, we asserted what effects the coroutine tries to execute, and we did it without writing a
+single mock!
 
 # Using yacol with the outside world
 
