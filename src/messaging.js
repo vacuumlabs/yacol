@@ -1,6 +1,7 @@
 import {channelType} from './constants'
 import {Queue} from './queue'
 import {assertChannel} from './utils'
+import t from 'transducers-js'
 
 export function getMessage(channel) {
   assertChannel(channel)
@@ -12,14 +13,27 @@ export function getMessage(channel) {
   })
 }
 
+
 export function pushMessage(channel, message) {
   assertChannel(channel)
-  channel.queue.push(message)
+  channel.pushToQueue(channel.queue, message)
 }
 
-export function createChannel() {
+export function createChannel(transducer = null) {
+  const queue = new Queue()
+
+  let pushToQueue = (queue, message) => {
+    queue.push(message)
+    return queue
+  }
+
+  if (transducer != null) {
+    pushToQueue = t.toFn(transducer, pushToQueue)
+  }
+
   return ({
     type: channelType,
-    queue: new Queue(),
+    queue,
+    pushToQueue,
   })
 }

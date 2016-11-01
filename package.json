@@ -7,8 +7,8 @@
     "type": "git",
     "url": "git@github.com:vacuumlabs/yacol.git"
   },
-  "engines" : {
-    "node" : ">=6.2.0"
+  "engines": {
+    "node": ">=6.2.0"
   },
   "scripts": {
     "testq": "mocha --compilers js:babel-core/register tests/*.js",
@@ -23,7 +23,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "on-headers": "^1.0.1"
+    "on-headers": "^1.0.1",
+    "transducers-js": "^0.4.174"
   },
   "devDependencies": {
     "babel-cli": "^6.18.0",
