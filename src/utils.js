@@ -1,4 +1,10 @@
-import {pidString, corType, channelType} from './constants'
+import {pidString, corType, channelType, terminatedErrorType} from './constants'
+
+export function killHandler(e) {
+  if (e.type !== terminatedErrorType) {
+    throw e
+  }
+}
 
 export function getCurrentCoroutine() {
   return global[pidString]

@@ -1,6 +1,6 @@
 import {run, context} from '../dist'
 import {assert} from 'chai'
-import {resetTimer, timeApprox} from './utils'
+import {resetTimer} from './utils'
 import Promise from 'bluebird'
 
 beforeEach(resetTimer)
@@ -23,18 +23,25 @@ describe('inspect', () => {
       return res
     }).inspect()
 
+    function isPromise(obj) {
+      return (typeof obj.then === 'function')
+    }
+
     run(function*() {
       let what
       what = yield cor.getEffect()
-      timeApprox(200)
-      assert.deepEqual(what, {runnable: inc, args: [10, 0], done: false})
+      assert.isOk(isPromise(what.promise))
+      cor.step()
+      what = yield cor.getEffect()
+      assert.deepEqual(what, {runnable: inc, args: [10, 0]})
       cor.step(100)
       what = yield cor.getEffect()
-      timeApprox(400)
-      assert.deepEqual(what, {runnable: inc, args: [100, 1], done: false})
+      assert.isOk(isPromise(what.promise))
+      cor.step()
+      what = yield cor.getEffect()
+      assert.deepEqual(what, {runnable: inc, args: [100, 1]})
       cor.step(101)
       what = yield cor.getEffect()
-      timeApprox(400)
       assert.deepEqual(what, {value: 101, done: true})
       assert.isNotOk(hereInc)
       done()
@@ -54,7 +61,7 @@ describe('inspect', () => {
     run(function*() {
       let what
       what = yield cor.getEffect()
-      assert.deepEqual(what, {runnable: inc, args: [0, 0], done: false})
+      assert.deepEqual(what, {runnable: inc, args: [0, 0]})
       cor.step()
       what = yield cor.getEffect()
       assert.equal(what.done, true)

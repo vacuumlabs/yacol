@@ -1,10 +1,14 @@
-import {pidString, corType, builtinFns, terminatedErrType} from './constants'
+import {pidString, corType, builtinFns, terminatedErrorType} from './constants'
 import {createChannel, pushMessage, getMessage} from './messaging'
 import {isCor, assertCor} from './utils'
 
 let idSeq = 0
 
 const runPromise = (cor, promise) => {
+  if (cor.options.inspectMode) {
+    pushMessage(cor.effects, {promise})
+    return
+  }
   promise.then((res) => {
     setDone(cor, {returnValue: res})
   }).catch((err) => {
@@ -109,9 +113,10 @@ const runGenerator = (cor, gen) => {
             pushMessage(cor.effects, {
               runnable: nxt.value.runnable,
               args: nxt.value.args,
-              done: nxt.done
             })
             return
+          } else if (looksLikePromise(nxt.value)) {
+            pushMessage(cor.effects, {promise: nxt.value})
           }
         }
       } catch (err) {
@@ -419,7 +424,7 @@ export function kill(cor) {
 
   traverse(cor)
   const err = new Error('Coroutine was terminated')
-  err.type = terminatedErrType
+  err.type = terminatedErrorType
 
   for (let cor of toKill) {
     handleError(cor, err)
