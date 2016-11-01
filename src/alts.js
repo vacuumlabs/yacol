@@ -2,15 +2,15 @@ import {run, onReturn} from './cor'
 import {createChannel, pushMessage, getMessage} from './messaging'
 import {assertCor} from './utils'
 
-export const alts = function*(...args) {
+export const alts = function*(args) {
   const channel = createChannel()
-  for (let i = 0; i < args.length; i++) {
-    assertCor(args[i])
-    onReturn(args[i], (err, res) => {
+  for (let key in args) {
+    assertCor(args[key])
+    onReturn(args[key], (err, res) => {
       if (err != null) {
-        pushMessage(channel, {error: [i, res]})
+        pushMessage(channel, {error: err})
       } else {
-        pushMessage(channel, {result: [i, res]})
+        pushMessage(channel, {result: [key, res]})
       }
     })
   }

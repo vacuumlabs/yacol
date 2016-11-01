@@ -20,8 +20,8 @@ describe('alts', function(done) {
 
     it('alts', (done) => {
       run(function*() {
-        const args = []
-        let mini = 0
+        const args = {}
+        let minKey = 'id-0'
         let sum
         for (let j = 0; j < n; j++) {
           let time = (j + 1) * 100
@@ -30,24 +30,24 @@ describe('alts', function(done) {
           if (j === 0) {
             sum = a + b
           }
-          args.push(run(inc, time, a, b))
+          args[`id-${j}`] = run(inc, time, a, b)
         }
         for (let j = 0; j < 3 * n; j++) {
-          const ind1 = randomInt(n)
-          const ind2 = randomInt(n)
+          const ind1 = `id-${randomInt(n)}`
+          const ind2 = `id-${randomInt(n)}`
           if (ind1 !== ind2) {
             let tmp = args[ind1]
             args[ind1] = args[ind2]
             args[ind2] = tmp
-            if (ind1 === mini) {
-              mini = ind2
-            } else if (ind2 === mini) {
-              mini = ind1
+            if (ind1 === minKey) {
+              minKey = ind2
+            } else if (ind2 === minKey) {
+              minKey = ind1
             }
           }
         }
-        const res = yield run(alts, ...args)
-        assert.deepEqual(res, [mini, sum])
+        const res = yield run(alts, args)
+        assert.deepEqual(res, [minKey, sum])
         done()
       })
     })
