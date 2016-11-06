@@ -411,22 +411,30 @@ export function onReturn(cor, cb) {
   }}
 }
 
-export function kill(cor) {
+const terminatedError = new Error('Coroutine was terminated')
+terminatedError.type = terminatedErrorType
 
-  const toKill = []
-
-  function traverse(cor) {
-    toKill.push(cor)
-    for (let child of cor.children) {
-      traverse(child)
+export function kill(...args) {
+  const cor = args[0]
+  if (!isDone(cor)) {
+    let options = {}
+    if (args.length > 1) {
+      options.returnValue = args[1]
+    } else if (cor.options.onError != null) {
+      try {
+        options.returnValue = cor.options.onError(terminatedError)
+      } catch (e) {
+        handleError(cor, e)
+      }
+    } else {
+      options.error = terminatedError
+    }
+    // if error handler throw
+    if (!isDone(cor)) {
+      setDone(cor, options)
     }
   }
-
-  traverse(cor)
-  const err = new Error('Coroutine was terminated')
-  err.type = terminatedErrorType
-
-  for (let cor of toKill) {
-    handleError(cor, err)
+  for (let child of cor.children) {
+    kill(child)
   }
 }

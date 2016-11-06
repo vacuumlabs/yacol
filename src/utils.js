@@ -6,6 +6,10 @@ export function killHandler(e) {
   }
 }
 
+export function isTerminatedError(cor) {
+  return (typeof cor === 'object' && cor != null && cor.type === terminatedErrorType)
+}
+
 export function getCurrentCoroutine() {
   return global[pidString]
 }
