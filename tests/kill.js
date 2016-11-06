@@ -42,6 +42,27 @@ describe('kill', () => {
     })
   })
 
+  it('children of errored coroutine are terminated', (done) => {
+    let here = false, c
+    run(function*() {
+      run(function*() {
+        c = run(function*() {
+          yield Promise.delay(10)
+          here = true
+        })
+        throw new Error('yuck fou')
+      }).catch((e) => {})
+      yield Promise.delay(50)
+      assert.isNotOk(here)
+      run(function*() {
+        yield c
+      }).catch((e) => {
+        assert.isOk(isTerminatedError(e))
+        done()
+      })
+    })
+  })
+
   it('killing not awaited coroutine does not propagate error', (done) => {
     let here1 = false
     run(function*() {

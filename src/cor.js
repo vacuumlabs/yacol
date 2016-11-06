@@ -42,10 +42,6 @@ function handleError(cor, err) {
     Object.defineProperty(err, 'cor', {value: cor})
   }
 
-  // first set .error attr to all errorneous channels, only then setDone to them to prevent
-  // 'race conds'
-  const shouldPushEnd = new Set()
-
   function _handleError(cor, err) {
     if (isDone(cor)) {return}
     const options = {}
@@ -64,7 +60,10 @@ function handleError(cor, err) {
       options.error = err
       processed = false
     }
-    shouldPushEnd.add([cor, options])
+    setDone(cor, options)
+    for (let child of cor.children) {
+      kill(child)
+    }
     if (!processed) {
       if (cor.parent == null) {
         console.error('unhandled error occured:', err)
@@ -76,10 +75,6 @@ function handleError(cor, err) {
   }
 
   _handleError(cor, err)
-
-  for (let [cor, options] of shouldPushEnd) {
-    setDone(cor, options)
-  }
 }
 
 const runGenerator = (cor, gen) => {
