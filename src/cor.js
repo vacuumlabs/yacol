@@ -215,13 +215,25 @@ function resolvePatched(cor, runnable) {
   return runnable
 }
 
+export function run(runnable, ...args) {
+  return runWithOptions({}, runnable, ...args)
+}
+
+export function runWithParent(parent, runnable, ...args) {
+  return runWithOptions({parent}, runnable, ...args)
+}
+
+export function runDetached(runnable, ...args) {
+  return runWithOptions({parent: null}, runnable, ...args)
+}
+
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
 // etc. Delagates the actual running to runLater
 
-export function run(runnable, ...args) {
+export function runWithOptions(options, runnable, ...args) {
 
   let id = `${idSeq++}`
-  const parentCor = global[pidString]
+  const parentCor = 'parent' in options ? options.parent : global[pidString]
 
   let myZone = {
     public: new Map(),
@@ -283,7 +295,8 @@ export function run(runnable, ...args) {
     context: myZone,
     locallyDone: false, // generator has returned
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
-    options: {}, // .catch, .inspect, etc are used to populate this object with info customizing the run
+    // .catch, .inspect, etc are used to populate this object with info customizing the run
+    options: Object.assign({}, options),
     children: new Set(),
     runnable, // runnable, args and stacktrace are for introspection and debug purposes
     args: args,
@@ -312,11 +325,20 @@ export function run(runnable, ...args) {
 
   myZone.cor = cor
   if (parentCor != null) {
-    makeLink(cor, parentCor)
-    onReturn(cor, (err, res) => {
-      unLink(cor)
-      tryEnd(parentCor)
-    })
+    if (options.killOnEnd) {
+      cor.parent = parentCor
+      onReturn(parentCor, (err, res) => {
+        // if cor already terminated, killing do nothing
+        kill(cor)
+        delete cor.parent
+      })
+    } else {
+      makeLink(cor, parentCor)
+      onReturn(cor, (err, res) => {
+        unLink(cor)
+        tryEnd(parentCor)
+      })
+    }
   }
 
   // if parent in inspect mode, don't run the coroutine
