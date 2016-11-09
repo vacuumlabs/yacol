@@ -1,4 +1,6 @@
-import {run, pushMessage, getMessage, createChannel, context} from './'
+import {run} from './cor'
+import {context} from './context'
+import {pushMessage, getMessage, createChannel} from './messaging'
 import onHeaders from 'on-headers'
 
 const appToChan = new WeakMap()

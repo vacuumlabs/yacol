@@ -170,6 +170,7 @@
     "Map": true,
     "Set": true,
     "WeakMap": true,
+    "Symbol": true,
   },
   "ecmaFeatures": {
     "jsx": true

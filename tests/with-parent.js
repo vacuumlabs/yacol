@@ -29,7 +29,7 @@ describe('with-parent', () => {
 
       runDetached(function*() {
         assert.equal(context.get('hello'), undefined)
-        yield Promise.delay(1000)
+        yield Promise.delay(100000)
       })
 
       yield Promise.delay(200)

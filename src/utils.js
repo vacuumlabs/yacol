@@ -1,5 +1,35 @@
 import {pidString, corType, channelType, terminatedErrorType} from './constants'
 
+export function isIterable(obj) {
+  // checks for null and undefined
+  if (obj == null) {
+    return false
+  }
+  return typeof obj[Symbol.iterator] === 'function'
+}
+
+export function assertIterableOfChannels(obj) {
+  if (!isIterable(obj)) {
+    throw new Error('the argument should be iterable of channels, it is not iterable')
+  }
+  for (let ch of obj) {
+    if (!isChannel(ch)) {
+      console.error('the argument should be iterable of channels, but contains', ch)
+      throw new Error('the argument should be iterable of channels')
+    }
+  }
+}
+
+export function onKill(e) {
+  return (fn) => {
+    if (e.type === terminatedErrorType) {
+      fn()
+    } else {
+      throw e
+    }
+  }
+}
+
 export function killHandler(e) {
   if (e.type !== terminatedErrorType) {
     throw e

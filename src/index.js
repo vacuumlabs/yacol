@@ -5,6 +5,7 @@ export * from './context'
 export * from './cor'
 export * from './messaging'
 export * from './alts'
+export * from './messaging-advanced'
 export const expressHelpers = eh
 export const prettyErrorLog = pel
 export const killHandler = kh
