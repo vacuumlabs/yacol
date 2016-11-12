@@ -123,7 +123,7 @@ function prettyError(e) {
     if (cor == null) {
       return res
     }
-    const name = cor.runnable.name || '[Function]'
+    const name = cor.runnable ? (cor.runnable.name || '[Function]') : cor.runnable
     const args = `${cor.args}`
     res.push('')
     res.push(`runnable: ${name}, args: [${args}]`)

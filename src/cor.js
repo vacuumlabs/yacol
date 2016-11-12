@@ -66,8 +66,9 @@ function handleError(cor, err) {
     }
     if (!processed) {
       if (cor.parent == null) {
-        console.error('unhandled error occured:', err)
-        throw err
+        console.error('Uncaught error occured. It is a good ' +
+          'practice to attach a global error handler to the top-level coroutine')
+        console.error(err)
       } else {
         _handleError(cor.parent, err)
       }
@@ -193,7 +194,7 @@ function makeLink(child, parent) {
 function unLink(child) {
   const found = child.parent.children.delete(child)
   if (!found) {
-    throw new Error('Coroutine library internal error: inconsistent child-parent tree')
+    throw new Error('Internal yacol error: inconsistent child-parent tree')
   }
   delete child.parent
 }
@@ -274,15 +275,15 @@ export function runWithOptions(options, runnable, ...args) {
 
   function patch(...args) {
     if (cor.patchData != null) {
-      throw new Error('For your safety, you cannot patch single coroutine more than once')
+      handleError(cor, new Error('patch: For your safety, you cannot patch single coroutine more than once'))
     }
     cor.patchData = new Map()
     for (let arg of args) {
       if (!(Array.isArray(arg) && arg.length === 2)) {
-        throw new Error('all arguments of patch must be arrays of size 2')
+        handleError(cor, new Error('patch: all arguments of patch must be arrays of size 2'))
       }
       if (cor.patchData.has(arg)) {
-        throw new Error('For your safety, you cannot patch single runnable more than once')
+        handleError(cor, new Error('patch: For your safety, you cannot patch single runnable more than once'))
       }
       cor.patchData.set(arg[0], arg[1])
     }
@@ -371,21 +372,20 @@ function runLater(cor, runnable, ...args) {
       runGenerator(cor, gen)
     } else {
       console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)
-      throw new Error('unknown first argument')
+      handleError(cor, new Error('unknown first argument'))
     }
   } else if (looksLikePromise(runnable)) {
     runPromise(runnable, cor)
   } else {
     console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)
-    throw new Error('unknown first argument')
+    handleError(cor, new Error('unknown first argument'))
   }
-
 }
 
 function setDone(cor, options = {}) {
   assertCor(cor)
   if (isDone(cor)) {
-    throw new Error('cannot end channel more than once')
+    throw new Error('Internal yacol error: cannot end channel more than once')
   }
   let e = ('error' in options)
   let r = ('returnValue' in options)
@@ -394,9 +394,9 @@ function setDone(cor, options = {}) {
   } else if (r && !e) {
     cor.returnValue = options.returnValue
   } else if (r && e) {
-    throw new Error('Internal error: both error and returnValue are specified')
+    throw new Error('Internal yacol error: both error and returnValue are specified')
   } else {
-    throw new Error('Internal error: either error or return value must be specified')
+    throw new Error('Internal yacol error: either error or return value must be specified')
   }
   setTimeout(() => {
     for (let listener of cor.returnListeners) {
@@ -411,7 +411,8 @@ export function onReturn(cor, cb) {
   function _cb() {
     if ('error' in cor) {
       if (cor.error == null) {
-        console.error('Throwing null and undefined is not yet supported!')
+        console.error('Throwing null and undefined is not yet supported! Re-throwing empty error.')
+        cor.error = new Error()
       }
       cb(cor.error)
     } else {
@@ -446,7 +447,7 @@ export function kill(...args) {
     } else {
       options.error = terminatedError
     }
-    // if error handler throw
+    // if error handler throws
     if (!isDone(cor)) {
       setDone(cor, options)
     }
