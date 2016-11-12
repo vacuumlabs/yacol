@@ -1,4 +1,5 @@
-import {run, pushMessage, getMessage, createChannel, mult, kill, merge} from '../dist'
+import {run, pushMessage, getMessage, createChannel,
+  droppingChannel, slidingChannel, mult, kill, merge} from '../dist'
 import {assert} from 'chai'
 //import {resetTimer, timeApprox} from './utils'
 import Promise from 'bluebird'
@@ -83,5 +84,38 @@ describe('mult', () => {
     })
     yield c1
   }))
+})
+
+describe('sliding channel', () => {
+
+  it('basics', () => run(function*() {
+    const ch = slidingChannel(2)
+    for (let i = 0; i < 10; i++) {
+      pushMessage(ch, i)
+    }
+    run(function*() {
+      const msg1 = yield run(getMessage, ch)
+      assert.equal(msg1, 8)
+      const msg2 = yield run(getMessage, ch)
+      assert.equal(msg2, 9)
+    })
+  }))
 
 })
+
+describe('dropping channel', () => {
+
+  it('basics', () => run(function*() {
+    const ch = droppingChannel(2)
+    for (let i = 0; i < 10; i++) {
+      pushMessage(ch, i)
+    }
+    run(function*() {
+      const msg1 = yield run(getMessage, ch)
+      assert.equal(msg1, 0)
+      const msg2 = yield run(getMessage, ch)
+      assert.equal(msg2, 1)
+    })
+  }))
+})
+

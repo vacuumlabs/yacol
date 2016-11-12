@@ -11,12 +11,27 @@ export class Queue {
   push = (val) => {
     this.data[`${this.max}`] = val
     this.max += 1
+    if (this.options.sliding != null) {
+      const sliding = this.options.sliding
+      if (this.max - this.min > sliding) {
+        this.min = this.max - sliding
+      }
+    }
+    if (this.options.dropping != null) {
+      const dropping = this.options.dropping
+      if (this.max - this.min > dropping) {
+        this.max = this.min + dropping
+      }
+    }
     this.trySatisfy()
   }
 
   empty = () => (this.max <= this.min)
 
   pop = (val) => {
+    if (this.empty()) {
+      throw new Error('cannot pop empty queue')
+    }
     const result = this.data[`${this.min}`]
     delete this.data[`${this.min}`]
     this.min += 1

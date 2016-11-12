@@ -13,22 +13,33 @@ export function getMessage(channel) {
   })
 }
 
-
 export function pushMessage(channel, message) {
   assertChannel(channel)
   channel.pushToQueue(channel.queue, message)
 }
 
+export function droppingChannel(capacity) {
+  return _createChannel({dropping: capacity})
+}
+
+export function slidingChannel(capacity) {
+  return _createChannel({sliding: capacity})
+}
+
 export function createChannel(transducer = null) {
-  const queue = new Queue()
+  return _createChannel({transducer})
+}
+
+function _createChannel(options) {
+  const queue = new Queue({sliding: options.sliding, dropping: options.dropping})
 
   let pushToQueue = (queue, message) => {
     queue.push(message)
     return queue
   }
 
-  if (transducer != null) {
-    pushToQueue = t.toFn(transducer, pushToQueue)
+  if (options.transducer != null) {
+    pushToQueue = t.toFn(options.transducer, pushToQueue)
   }
 
   return ({
