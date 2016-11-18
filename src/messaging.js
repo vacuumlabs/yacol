@@ -18,12 +18,12 @@ export function pushMessage(channel, message) {
   channel.pushToQueue(channel.queue, message)
 }
 
-export function droppingChannel(capacity) {
-  return _createChannel({dropping: capacity})
+export function droppingChannel(capacity, transducer = null) {
+  return _createChannel({dropping: capacity, transducer})
 }
 
-export function slidingChannel(capacity) {
-  return _createChannel({sliding: capacity})
+export function slidingChannel(capacity, transducer = null) {
+  return _createChannel({sliding: capacity, transducer})
 }
 
 export function createChannel(transducer = null) {
