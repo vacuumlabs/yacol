@@ -3,6 +3,7 @@ import {run, createChannel,
 import {assert} from 'chai'
 //import {resetTimer, timeApprox} from './utils'
 import Promise from 'bluebird'
+import t from 'transducers-js'
 
 describe('merge', () => {
 
@@ -84,6 +85,26 @@ describe('mult', () => {
     })
     yield c1
   }))
+
+  it('accepts transducer', () => run(function*() {
+    const xf = t.partitionBy((x) => {return typeof x === 'string'})
+    const ch = createChannel()
+    const mlt = mult(ch)
+    const out = mlt.subscribe(xf)
+    ch.put(1)
+    ch.put(2)
+    ch.put('much')
+    ch.put(3)
+    ch.put(4)
+    ch.put('progress')
+    const res = []
+    for (let i = 0; i < 3; i++) {
+      let msg = yield out.take()
+      res.push(msg)
+    }
+    assert.deepEqual(res, [[1, 2], ['much'], [3, 4]])
+  }))
+
 })
 
 describe('sliding channel', () => {

@@ -1,29 +1,52 @@
 import {runDetached} from './cor'
 import {createChannel} from './messaging'
-import {assertChannel} from './utils'
+import {isChannel, assertChannel} from './utils'
+import t from 'transducers-js'
 
 export function mult(source) {
 
-  let subscribed = new Set()
+  let subscribed = new Map()
   runDetached(function* () {
     while (true) {
       let what = yield source.take()
-      for (let chan of subscribed) {
-        chan.put(what)
+      for (let [chan, putFn] of subscribed) {
+        putFn(chan, what)
       }
     }
   })
 
-  function subscribe(ch) {
-    if (ch === undefined) {
-      ch = createChannel()
+  function parseChannelAndTransducer(args) {
+    const res = {}
+    for (let arg of args) {
+      if (isChannel(arg)) {
+        res.channel = arg
+      } else {
+        res.transducer = arg
+      }
     }
-    subscribed.add(ch)
-    return ch
+    if (res.channel == null) {
+      res.channel = createChannel()
+    }
+    return res
+  }
+
+  function putToChannel(channel, msg) {
+    channel.put(msg)
+    return channel
+  }
+
+  function subscribe(...args) {
+    const {channel, transducer = null} = parseChannelAndTransducer(args)
+    let fn = putToChannel
+    if (transducer != null) {
+      fn = t.toFn(transducer, fn)
+    }
+    subscribed.set(channel, fn)
+    return channel
   }
 
   function unsubscribe(ch) {
-    subscribed.remove(ch)
+    subscribed.delete(ch)
   }
 
   return {subscribe, unsubscribe}
