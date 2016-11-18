@@ -42,7 +42,7 @@ describe('inspect', () => {
       assert.deepEqual(what, {runnable: inc, args: [100, 1]})
       cor.step(101)
       what = yield cor.getEffect()
-      assert.deepEqual(what, {value: 101, done: true})
+      assert.deepEqual(what, {returnValue: 101, done: true})
       assert.isNotOk(hereInc)
       done()
     })

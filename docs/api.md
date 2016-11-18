@@ -38,7 +38,7 @@ Only available in inspect mode. `cor.getEffect()` returns coroutine which return
 ```
 {
   runnable: first argument of run,
-  argumens: rest of the arguments of run,
+  args: rest of the arguments of run,
 }
 ```
 If `cor` tries to yield Promise object, `getEffect()` will yield:
@@ -49,7 +49,13 @@ If `cor` tries to yield Promise object, `getEffect()` will yield:
 ```
 If `cor` has ended and has nothing more to say, `getEffect()` will yield:
 {
-  value: return value of the coroutine
+  returnValue: return value of the coroutine,
+  done: true
+}
+If `cor` has ended because of error, `getEffect()` will yield:
+{
+  error: error, that was caught,
+  done: true
 }
 
 Note that `cor` is paused at the current yield and does not continue its execution until

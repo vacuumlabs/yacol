@@ -103,7 +103,7 @@ const runGenerator = (cor, gen) => {
         nxt = gen.next(val)
         if (cor.options.inspectMode) {
           if (nxt.done) {
-            pushMessage(cor.effects, nxt)
+            pushMessage(cor.effects, {returnValue: nxt.value, done: true})
             return
           } else if (isCor(nxt.value)) {
             pushMessage(cor.effects, {

@@ -21,6 +21,6 @@ run(function*() {
   assert.deepEqual(effect, {runnable: getWeather, args: ['Vienna']})
   cor.step('rainy')
   effect = yield cor.getEffect()
-  assert.deepEqual(effect, {value: 'sunny in Bratislava, rainy in Vienna', done: true})
+  assert.deepEqual(effect, {returnValue: 'sunny in Bratislava, rainy in Vienna', done: true})
 })
 
