@@ -1,4 +1,4 @@
-import {run} from './cor'
+import {run, runWithParent} from './cor'
 import {context} from './context'
 import {pushMessage, getMessage, createChannel} from './messaging'
 import onHeaders from 'on-headers'
@@ -8,7 +8,7 @@ const middlewares = new WeakMap()
 
 export function register(app, verb, pattern, reqHandler) {
   if (!appToChan.has(app)) {
-    appToChan.set(app, createChannel({discardRead: true}))
+    appToChan.set(app, createChannel())
   }
   const reqChannel = appToChan.get(app)
   app[verb](pattern, (req, res, next) => {
@@ -41,16 +41,17 @@ export function* runApp(app) {
 
     run(function*() {
       context.set('request', req)
-      const cor = run(reqHandler, req, res, myNext)
+      let cor
       if (!middlewares.has(req)) {
         middlewares.set(req, [])
       }
       const midds = middlewares.get(req)
       if (midds.length > 0) {
-        // setting cor's parrent manually - kids, don't try this at home!
-        cor.parent = midds[midds.length - 1]
+        cor = runWithParent(midds[midds.length - 1], reqHandler, req, res, myNext)
+      } else {
+        cor = run(reqHandler, req, res, myNext)
       }
       midds.push(cor)
-    }).catch((e) => {console.error(e)})
+    })
   }
 }

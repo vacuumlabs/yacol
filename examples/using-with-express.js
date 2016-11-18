@@ -1,5 +1,5 @@
 import express from 'express'
-import {expressHelpers, run, context} from 'yacol'
+import {expressHelpers, run, context, prettyErrorLog} from 'yacol'
 import Promise from 'bluebird'
 
 const {register, runApp} = expressHelpers
@@ -41,6 +41,10 @@ function* worldMiddleware2(req, res, next) {
   yield Promise.delay(3000)
 }
 
+function* crashMiddleware(req, res, next) {
+  throw new Error('uh oh')
+}
+
 register(app, 'use', '*', greetingMiddleware)
 
 register(app, 'get', '/hello', hello)
@@ -49,6 +53,7 @@ register(app, 'get', '/context', helloContext)
 register(app, 'use', '/world', worldMiddleware1)
 register(app, 'use', '/world', worldMiddleware2)
 register(app, 'get', '/world', world)
+register(app, 'use', '/crash', crashMiddleware)
 
 run(function* () {
   run(runApp, app)
@@ -56,4 +61,4 @@ run(function* () {
     console.log('server started. Navigate to localhost:3000/hello, ' +
       'localhost:3000/world, or localhost:3000/context to see something')
   })
-})
+}).catch(prettyErrorLog)
