@@ -1,4 +1,5 @@
 import {run, runWithParent} from './cor'
+import {prettyErrorLog} from './utils'
 import {context} from './context'
 import {pushMessage, getMessage, createChannel} from './messaging'
 import onHeaders from 'on-headers'
@@ -49,7 +50,7 @@ export function* runApp(app) {
       if (midds.length > 0) {
         cor = runWithParent(midds[midds.length - 1], reqHandler, req, res, myNext)
       } else {
-        cor = run(reqHandler, req, res, myNext)
+        cor = run(reqHandler, req, res, myNext).catch(prettyErrorLog)
       }
       midds.push(cor)
     })

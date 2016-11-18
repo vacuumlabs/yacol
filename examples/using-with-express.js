@@ -1,5 +1,5 @@
 import express from 'express'
-import {expressHelpers, run, context, prettyErrorLog} from 'yacol'
+import {expressHelpers, run, context} from 'yacol'
 import Promise from 'bluebird'
 
 const {register, runApp} = expressHelpers
@@ -61,4 +61,4 @@ run(function* () {
     console.log('server started. Navigate to localhost:3000/hello, ' +
       'localhost:3000/world, or localhost:3000/context to see something')
   })
-}).catch(prettyErrorLog)
+})
