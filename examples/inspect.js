@@ -14,13 +14,13 @@ const cor = run(function*() {
 
 run(function*() {
   let effect
-  effect = yield cor.getEffect()
+  effect = yield cor.takeEffect()
   assert.deepEqual(effect, {runnable: getWeather, args: ['Bratislava']})
   cor.step('sunny')
-  effect = yield cor.getEffect()
+  effect = yield cor.takeEffect()
   assert.deepEqual(effect, {runnable: getWeather, args: ['Vienna']})
   cor.step('rainy')
-  effect = yield cor.getEffect()
+  effect = yield cor.takeEffect()
   assert.deepEqual(effect, {returnValue: 'sunny in Bratislava, rainy in Vienna', done: true})
 })
 

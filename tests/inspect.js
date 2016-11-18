@@ -29,19 +29,19 @@ describe('inspect', () => {
 
     run(function*() {
       let what
-      what = yield cor.getEffect()
+      what = yield cor.takeEffect()
       assert.isOk(isPromise(what.promise))
       cor.step()
-      what = yield cor.getEffect()
+      what = yield cor.takeEffect()
       assert.deepEqual(what, {runnable: inc, args: [10, 0]})
       cor.step(100)
-      what = yield cor.getEffect()
+      what = yield cor.takeEffect()
       assert.isOk(isPromise(what.promise))
       cor.step()
-      what = yield cor.getEffect()
+      what = yield cor.takeEffect()
       assert.deepEqual(what, {runnable: inc, args: [100, 1]})
       cor.step(101)
-      what = yield cor.getEffect()
+      what = yield cor.takeEffect()
       assert.deepEqual(what, {returnValue: 101, done: true})
       assert.isNotOk(hereInc)
       done()
@@ -60,10 +60,10 @@ describe('inspect', () => {
 
     run(function*() {
       let what
-      what = yield cor.getEffect()
+      what = yield cor.takeEffect()
       assert.deepEqual(what, {runnable: inc, args: [0, 0]})
       cor.step()
-      what = yield cor.getEffect()
+      what = yield cor.takeEffect()
       assert.equal(what.done, true)
       assert.equal(what.error.message, 'yuck fou')
       done()
@@ -91,7 +91,7 @@ describe('inspect', () => {
         let what
         while (what == null || !what.done) {
           assert.equal(context.get('hello'), 'world')
-          what = yield cor.getEffect()
+          what = yield cor.takeEffect()
           cor.step()
           context.set('hello', 'world')
         }

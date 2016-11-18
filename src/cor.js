@@ -269,7 +269,7 @@ export function runWithOptions(options, runnable, ...args) {
   function inspect() {
     addToOptions('inspectMode', true)
     cor.effects = createChannel()
-    cor.getEffect = () => run(getMessage, cor.effects)
+    cor.takeEffect = () => run(getMessage, cor.effects)
     return cor
   }
 
