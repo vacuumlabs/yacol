@@ -1,4 +1,4 @@
-import {run, pushMessage, getMessage, createChannel,
+import {run, createChannel,
   droppingChannel, slidingChannel, mult, kill, merge} from '../dist'
 import {assert} from 'chai'
 //import {resetTimer, timeApprox} from './utils'
@@ -14,14 +14,14 @@ describe('merge', () => {
 
     const ch = merge({ch1, ch2, ch3})
 
-    pushMessage(ch1, 'a')
-    pushMessage(ch2, 'b')
-    pushMessage(ch3, 'c')
+    ch1.put('a')
+    ch2.put('b')
+    ch3.put('c')
 
     run(function*() {
-      const msg1 = yield run(getMessage, ch)
-      const msg2 = yield run(getMessage, ch)
-      const msg3 = yield run(getMessage, ch)
+      const msg1 = yield ch.take()
+      const msg2 = yield ch.take()
+      const msg3 = yield ch.take()
       assert.deepEqual(msg1, ['ch1', 'a'])
       assert.deepEqual(msg2, ['ch2', 'b'])
       assert.deepEqual(msg3, ['ch3', 'c'])
@@ -44,15 +44,15 @@ describe('mult', () => {
 
     const c1 = run(function*() {
       while (true) {
-        const msg = yield run(getMessage, pipe1)
-        pushMessage(pipeAll, msg)
+        const msg = yield pipe1.take()
+        pipeAll.put(msg)
       }
     })
 
     const c2 = run(function*() {
       while (true) {
-        const msg = yield run(getMessage, pipe2)
-        pushMessage(pipeAll, msg)
+        const msg = yield pipe2.take()
+        pipeAll.put(msg)
       }
     })
 
@@ -60,13 +60,13 @@ describe('mult', () => {
 
     const c3 = run(function*() {
       while (true) {
-        const msg = yield run(getMessage, pipeAll)
+        const msg = yield pipeAll.take()
         all.push(msg)
       }
     })
 
-    pushMessage(ch, 1)
-    pushMessage(ch, 2)
+    ch.put(1)
+    ch.put(2)
 
     yield Promise.delay(100)
     assert.deepEqual(all.sort(), [1, 1, 2, 2])
@@ -91,12 +91,12 @@ describe('sliding channel', () => {
   it('basics', () => run(function*() {
     const ch = slidingChannel(2)
     for (let i = 0; i < 10; i++) {
-      pushMessage(ch, i)
+      ch.put(i)
     }
     run(function*() {
-      const msg1 = yield run(getMessage, ch)
+      const msg1 = yield ch.take()
       assert.equal(msg1, 8)
-      const msg2 = yield run(getMessage, ch)
+      const msg2 = yield ch.take()
       assert.equal(msg2, 9)
     })
   }))
@@ -108,12 +108,12 @@ describe('dropping channel', () => {
   it('basics', () => run(function*() {
     const ch = droppingChannel(2)
     for (let i = 0; i < 10; i++) {
-      pushMessage(ch, i)
+      ch.put(i)
     }
     run(function*() {
-      const msg1 = yield run(getMessage, ch)
+      const msg1 = yield ch.take()
       assert.equal(msg1, 0)
-      const msg2 = yield run(getMessage, ch)
+      const msg2 = yield ch.take()
       assert.equal(msg2, 1)
     })
   }))

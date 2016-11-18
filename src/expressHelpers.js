@@ -1,7 +1,7 @@
 import {run, runWithParent} from './cor'
 import {prettyErrorLog} from './utils'
 import {context} from './context'
-import {pushMessage, getMessage, createChannel} from './messaging'
+import {createChannel} from './messaging'
 import onHeaders from 'on-headers'
 
 const appToChan = new WeakMap()
@@ -13,7 +13,7 @@ export function register(app, verb, pattern, reqHandler) {
   }
   const reqChannel = appToChan.get(app)
   app[verb](pattern, (req, res, next) => {
-    pushMessage(reqChannel, [req, res, next, reqHandler])
+    reqChannel.put([req, res, next, reqHandler])
   })
 }
 
@@ -23,7 +23,7 @@ export function* runApp(app) {
   }
   const channel = appToChan.get(app)
   while (true) {
-    const [req, res, next, reqHandler] = yield run(getMessage, channel)
+    const [req, res, next, reqHandler] = yield channel.take()
 
     const onHeadersPromise = new Promise((resolve, reject) => {
       onHeaders(res, () => resolve())

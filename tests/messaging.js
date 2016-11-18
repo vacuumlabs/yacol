@@ -1,4 +1,4 @@
-import {run, pushMessage, getMessage, createChannel} from '../dist'
+import {run, createChannel} from '../dist'
 import {randomInt, delay} from './utils'
 import {assert} from 'chai'
 
@@ -16,14 +16,14 @@ describe('messaging', () => {
       run(function*() {
         for (let i = 0; i < rep; i++) {
           yield run(delay, randomInt(baseWait * factor))
-          pushMessage(chan, i)
+          chan.put(i)
         }
       })
 
       run(function*() {
         for (let i = 0; i < rep; i++) {
           yield run(delay, randomInt(baseWait))
-          const msg = yield run(getMessage, chan)
+          const msg = yield chan.take()
           assert.equal(msg, i)
         }
       })

@@ -30,36 +30,37 @@ Attaches error handler to the coroutine. Handler should be of a type `(err) => s
 the same Coroutine on which this was called.
 
 ### coroutine.inspect()
-Turn on the inspect mode. In the inspect mode, you can call `.step()` and `.getEffect()` on the
+Turn on the inspect mode. In the inspect mode, you can call `.step()` and `.takeEffect()` on the
 Coroutine.
 
-### coroutine.getEffect()
-Only available in inspect mode. `cor.getEffect()` returns coroutine which returns the object describing what does `cor` try to do. The yielded object may have different forms. If `cor` tries to yield sub-coroutine, `getEffect()` will yield:
+### coroutine.takeEffect()
+Only available in inspect mode. `cor.takeEffect()` returns coroutine which returns the object describing what does `cor` try to do. The yielded object may have different forms. If `cor` tries to yield sub-coroutine, `takeEffect()` will yield:
 ```
 {
   runnable: first argument of run,
   args: rest of the arguments of run,
 }
 ```
-If `cor` tries to yield Promise object, `getEffect()` will yield:
+If `cor` tries to yield Promise object, `takeEffect()` will yield:
 ```
 {
   promise: yielded promise object
 }
 ```
-If `cor` has ended and has nothing more to say, `getEffect()` will yield:
+If `cor` has ended and has nothing more to say, `takeEffect()` will yield:
 {
   returnValue: return value of the coroutine,
   done: true
 }
-If `cor` has ended because of error, `getEffect()` will yield:
+If `cor` has ended because of error, `takeEffect()` will yield:
 {
   error: error, that was caught,
   done: true
 }
 
 Note that `cor` is paused at the current yield and does not continue its execution until
-`cor.step(val)` is called
+`cor.step(val)` is called. Note also, that `channel.takeEffect` is basically just a shorthand for
+`channel.effects.take()`
 
 ### coroutine.step(val) 
 Only available in an inspect mode. Calling `cor.step(val)` will resume `cor` execution until the next

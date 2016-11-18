@@ -1,4 +1,4 @@
-import {run, pushMessage, getMessage, createChannel} from '../../dist'
+import {run, createChannel} from '../../dist'
 import Promise from 'bluebird'
 
 let junk = []
@@ -34,14 +34,14 @@ describe('gc', () => {
 
       run(function*() {
         for (let i = 0; i < rep; i++) {
-          pushMessage(channel, [junk, i].join(''))
+          channel.put([junk, i].join(''))
           yield Promise.delay(0)
         }
       })
 
       run(function*() {
         for (let i = 0; i < rep; i++) {
-          yield run(getMessage, channel)
+          yield channel.take()
         }
       })
     })

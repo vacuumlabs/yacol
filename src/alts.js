@@ -1,5 +1,5 @@
-import {run, onReturn} from './cor'
-import {createChannel, pushMessage, getMessage} from './messaging'
+import {onReturn} from './cor'
+import {createChannel} from './messaging'
 import {assertCor} from './utils'
 
 export const alts = function*(args) {
@@ -8,13 +8,13 @@ export const alts = function*(args) {
     assertCor(args[key])
     onReturn(args[key], (err, res) => {
       if (err != null) {
-        pushMessage(channel, {error: err})
+        channel.put({error: err})
       } else {
-        pushMessage(channel, {result: [key, res]})
+        channel.put({result: [key, res]})
       }
     })
   }
-  const res = yield run(getMessage, channel)
+  const res = yield channel.take()
   if ('error' in res) {
     throw res.error
   } else {

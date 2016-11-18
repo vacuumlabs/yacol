@@ -1,4 +1,4 @@
-import {run, getMessage, createChannel, pushMessage} from '../dist'
+import {run, createChannel} from '../dist'
 import Promise from 'bluebird'
 import {assert} from 'chai'
 import t from 'transducers-js'
@@ -9,13 +9,13 @@ describe('transducers', () => {
     const ch = createChannel(xf)
     run(function*() {
       for (let i = 0; i < 10; i++) {
-        pushMessage(ch, i)
+        ch.put(i)
         yield Promise.delay(10)
       }
     })
     run(function*() {
       for (let i = 0; i < 5; i++) {
-        const msg = yield run(getMessage, ch)
+        const msg = yield ch.take()
         assert.equal(msg, i * 4)
       }
     })

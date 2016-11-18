@@ -1,5 +1,5 @@
-import {run, runDetached} from './cor'
-import {getMessage, pushMessage, createChannel} from './messaging'
+import {runDetached} from './cor'
+import {createChannel} from './messaging'
 import {assertChannel} from './utils'
 
 export function mult(source) {
@@ -7,9 +7,9 @@ export function mult(source) {
   let subscribed = new Set()
   runDetached(function* () {
     while (true) {
-      let what = yield run(getMessage, source)
+      let what = yield source.take()
       for (let chan of subscribed) {
-        pushMessage(chan, what)
+        chan.put(what)
       }
     }
   })
@@ -41,8 +41,8 @@ export function merge(inputs, output) {
 
   for (let key in inputs) {
     runDetached(function* () {
-      const msg = yield run(getMessage, inputs[key])
-      pushMessage(output, [key, msg])
+      const msg = yield inputs[key].take()
+      output.put([key, msg])
     })
   }
 

@@ -1,12 +1,12 @@
 import {pidString, corType, builtinFns, terminatedErrorType} from './constants'
-import {createChannel, pushMessage, getMessage} from './messaging'
+import {createChannel} from './messaging'
 import {isCor, assertCor} from './utils'
 
 let idSeq = 0
 
 const runPromise = (cor, promise) => {
   if (cor.options.inspectMode) {
-    pushMessage(cor.effects, {promise})
+    cor.effects.put({promise})
     return
   }
   promise.then((res) => {
@@ -103,21 +103,21 @@ const runGenerator = (cor, gen) => {
         nxt = gen.next(val)
         if (cor.options.inspectMode) {
           if (nxt.done) {
-            pushMessage(cor.effects, {returnValue: nxt.value, done: true})
+            cor.effects.put({returnValue: nxt.value, done: true})
             return
           } else if (isCor(nxt.value)) {
-            pushMessage(cor.effects, {
+            cor.effects.put({
               runnable: nxt.value.runnable,
               args: nxt.value.args,
             })
             return
           } else if (looksLikePromise(nxt.value)) {
-            pushMessage(cor.effects, {promise: nxt.value})
+            cor.effects.put({promise: nxt.value})
           }
         }
       } catch (err) {
         if (cor.options.inspectMode) {
-          pushMessage(cor.effects, {error: err, done: true})
+          cor.effects.put({error: err, done: true})
           return
         }
         handleError(cor, err)
@@ -269,7 +269,7 @@ export function runWithOptions(options, runnable, ...args) {
   function inspect() {
     addToOptions('inspectMode', true)
     cor.effects = createChannel()
-    cor.takeEffect = () => run(getMessage, cor.effects)
+    cor.takeEffect = () => cor.effects.take()
     return cor
   }
 
