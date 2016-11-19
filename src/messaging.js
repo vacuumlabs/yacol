@@ -1,16 +1,18 @@
+import {run} from './cor'
 import {channelType} from './constants'
 import {Queue} from './queue'
 import {assertChannel} from './utils'
 import t from 'transducers-js'
 
-function getMessage(channel) {
+function* getMessage(channel) {
   assertChannel(channel)
-  return new Promise((resolve, reject) => {
-    const {queue} = channel
+  const {queue} = channel
+  yield new Promise((resolve, reject) => {
     queue.next((val) => {
       resolve(val)
     })
   })
+  return queue.pop()
 }
 
 function pushMessage(channel, message) {
@@ -46,7 +48,7 @@ function _createChannel(options) {
     type: channelType,
     queue,
     pushToQueue,
-    take: () => getMessage(ch),
+    take: () => run(getMessage, ch),
     put: (msg) => pushMessage(ch, msg),
   }
 

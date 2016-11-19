@@ -34,7 +34,12 @@ Turn on the inspect mode. In the inspect mode, you can call `.step()` and `.take
 Coroutine.
 
 ### coroutine.takeEffect()
-Only available in inspect mode. `cor.takeEffect()` returns coroutine which returns the object describing what does `cor` try to do. The yielded object may have different forms. If `cor` tries to yield sub-coroutine, `takeEffect()` will yield:
+Only available in inspect mode. `cor.takeEffect()` provides the object describing what
+`cor` tries to do. This object can take different forms as described below. `takeEffect` returns
+coroutine, so you have to yield the object from it. Note that `channel.takeEffect` is internaly just
+ `.take` on internal `channel.effects` channel.
+
+If `cor` tries to yield sub-coroutine, `takeEffect()` will yield:
 ```
 {
   runnable: first argument of run,
@@ -59,8 +64,7 @@ If `cor` has ended because of error, `takeEffect()` will yield:
 }
 
 Note that `cor` is paused at the current yield and does not continue its execution until
-`cor.step(val)` is called. Note also, that `channel.takeEffect` is basically just a shorthand for
-`channel.effects.take()`
+`cor.step(val)` is called.
 
 ### coroutine.step(val) 
 Only available in an inspect mode. Calling `cor.step(val)` will resume `cor` execution until the next
@@ -130,7 +134,7 @@ Creates channel (not bounded to any capacity).
 putes message to channel. The operation is not blocking
 
 ### channel.take()
-Obtains value from channel. The operation returns Promise, so you should yield the value from it:
+Obtains value from channel. The operation returns coroutine, so you should yield the value from it:
 ``` const msg = yield channel.take() ```
 
 # Advanced messaging concepts
