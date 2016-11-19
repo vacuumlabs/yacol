@@ -26,9 +26,14 @@ function getMessage(channel) {
     })
 }
 
-function pushMessage(channel, message) {
+export function putToChannel(channel, message) {
   assertChannel(channel)
-  channel.pushToQueue(channel.queue, message)
+  if (channel.merger) {
+    channel.merger.putToChannel(channel.merger.channel, message)
+  } else {
+    channel.pushToQueue(channel.queue, message)
+  }
+  return channel
 }
 
 export function droppingChannel(capacity, transducer = null) {
@@ -60,7 +65,7 @@ function _createChannel(options) {
     queue,
     pushToQueue,
     take: () => getMessage(ch),
-    put: (msg) => pushMessage(ch, msg),
+    put: (msg) => putToChannel(ch, msg),
   }
 
   return ch

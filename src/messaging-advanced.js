@@ -1,5 +1,5 @@
 import {runDetached, kill} from './cor'
-import {createChannel} from './messaging'
+import {createChannel, putToChannel} from './messaging'
 import {isChannel, assertChannel, isIterable} from './utils'
 import t from 'transducers-js'
 
@@ -19,12 +19,6 @@ function parseChannelAndTransducer(args) {
     res.channel = createChannel()
   }
   return res
-}
-
-/* reducer-like putting to channel which can be transduced */
-function putToChannel(channel, msg) {
-  channel.put(msg)
-  return channel
 }
 
 export function mult(source) {
@@ -102,26 +96,22 @@ export function mergeNamed(inputs, ...args) {
   return _merge(chanToLabel, true, output, transducer)
 }
 
-
 function _merge(inputs, emitLabels, output, transducer) {
-  let putFn = putToChannel
+  let tPutToChannel = putToChannel
+
   if (transducer != null) {
-    putFn = t.toFn(transducer, putFn)
+    tPutToChannel = t.toFn(transducer, putToChannel)
   }
-  for (let key in inputs) {
-    assertChannel(inputs[key])
-  }
+
   for (let [channel, label] of inputs) {
-    runDetached(function* () {
-      while (true) {
-        const msg = yield channel.take()
-        if (emitLabels) {
-          putFn(output, [label, msg])
-        } else {
-          putFn(output, msg)
-        }
-      }
-    })
+    let ttPutToChannel = tPutToChannel
+    if (emitLabels) {
+      ttPutToChannel = t.toFn(t.map((msg) => [label, msg]), ttPutToChannel)
+    }
+    channel.merger = {
+      channel: output,
+      putToChannel: ttPutToChannel,
+    }
   }
   return output
 }
