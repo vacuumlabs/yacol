@@ -1,4 +1,4 @@
-import {runDetached} from './cor'
+import {runDetached, kill} from './cor'
 import {createChannel} from './messaging'
 import {isChannel, assertChannel} from './utils'
 import t from 'transducers-js'
@@ -6,7 +6,8 @@ import t from 'transducers-js'
 export function mult(source) {
 
   let subscribed = new Map()
-  runDetached(function* () {
+
+  const multCoroutine = runDetached(function* () {
     while (true) {
       let what = yield source.take()
       for (let [chan, putFn] of subscribed) {
@@ -52,7 +53,11 @@ export function mult(source) {
     subscribed.delete(ch)
   }
 
-  return {subscribe, unsubscribe}
+  function stop() {
+    kill(multCoroutine)
+  }
+
+  return {subscribe, unsubscribe, stop}
 
 }
 

@@ -1,7 +1,7 @@
 export class Queue {
 
   constructor(options = {}) {
-    this.waiting = new Set()
+    this.waiting = null
     this.options = options
     this.min = 0
     this.max = 0
@@ -30,7 +30,7 @@ export class Queue {
 
   pop = (val) => {
     if (this.empty()) {
-      throw new Error('cannot pop empty queue')
+      throw new Error('Cannot pop empty queue.')
     }
     const result = this.data[`${this.min}`]
     delete this.data[`${this.min}`]
@@ -38,23 +38,27 @@ export class Queue {
     return result
   }
 
+  first = () => {
+    return this.data[`${this.min}`]
+  }
+
   next = (cb) => {
-    this.waiting.add(cb)
+    if (this.waiting != null) {
+      throw new Error('Cannot do multiple takes from one channel ' +
+        'at one time. See documentation for examplanation, why this is a good idea.')
+    }
+    this.waiting = cb
     this.trySatisfy()
-    return {dispose: () => this.waiting.delete(cb)}
+    return {dispose: () => {this.waiting = null}}
   }
 
   trySatisfy = () => {
-    const satisfied = new Set()
-    for (let cb of this.waiting) {
-      if (this.max > this.min) {
-        const res = this.pop()
-        cb(res)
-        satisfied.add(cb)
+    if (this.max > this.min && this.waiting != null) {
+      if (typeof this.waiting !== 'function') {
+        console.error('wtf', this.waiting)
       }
-    }
-    for (let cb of satisfied) {
-      this.waiting.delete(cb)
+      this.waiting()
+      this.waiting = null
     }
   }
 

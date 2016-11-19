@@ -1,7 +1,10 @@
 import {assert} from 'chai'
 import Promise from 'bluebird'
 
-const getTime = () => (new Date()).getTime()
+export function getTime() {
+  return (new Date()).getTime()
+}
+
 let timeStart
 
 export function* delay(time) {

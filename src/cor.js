@@ -91,11 +91,7 @@ const runGenerator = (cor, gen) => {
     global[pidString] = oldPid
   }
 
-  function step(val) {
-    setTimeout(() => _step(val), 0)
-  }
-
-  function _step(val) {
+  function step(val, iter = 0) {
     if (isDone(cor)) {return}
     withPid(() => {
       let nxt
@@ -140,7 +136,7 @@ const runGenerator = (cor, gen) => {
             // mistakenly treat the error as unhandled
             nxt.catch((err) => {
               handleError(cor, err)
-            }).then((res) => {step(res)})
+            }).then((res) => {step(res, iter + 1)})
           } else {
             let childHandle
             if (isCor(nxt)) {
@@ -150,7 +146,7 @@ const runGenerator = (cor, gen) => {
             }
             onReturn(childHandle, (err, ret) => {
               if (err == null) {
-                step(ret)
+                step(ret, iter + 1)
               } else {
                 handleError(cor, err)
               }
@@ -162,7 +158,7 @@ const runGenerator = (cor, gen) => {
   }
   // from the moment user calls run() we've already waited for the next event-loop to get here. At
   // this point, we can start execution immediately.
-  _step()
+  step()
 }
 
 function tryEnd(cor) {
@@ -226,6 +222,13 @@ export function runWithParent(parent, runnable, ...args) {
 
 export function runDetached(runnable, ...args) {
   return runWithOptions({parent: null}, runnable, ...args)
+}
+
+// perf tweaking: does not wait for the next event loop. All options should be availbale
+// so let's start executing.
+
+export function runImmediately(options, runnable, ...args) {
+  return runWithOptions({...options, immediately: true}, runnable, ...args)
 }
 
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
@@ -307,6 +310,7 @@ export function runWithOptions(options, runnable, ...args) {
     catch: (errorHandler) => addToOptions('onError', errorHandler),
     patch,
     inspect,
+    onKill: (fn) => addToOptions('onKill', fn),
     /*
      * in inspect mode:
      *   `step`: step function
@@ -344,7 +348,11 @@ export function runWithOptions(options, runnable, ...args) {
 
   // if parent in inspect mode, don't run the coroutine
   if (!(parentCor != null && parentCor.options.inspectMode)) {
-    setTimeout(() => runLater(cor, runnable, ...args), 0)
+    if (options.immediately) {
+      runLater(cor, runnable, ...args)
+    } else {
+      setTimeout(() => runLater(cor, runnable, ...args), 0)
+    }
   }
 
   return cor
@@ -449,6 +457,9 @@ export function kill(...args) {
     }
     // if error handler throws
     if (!isDone(cor)) {
+      if (cor.options.onKill) {
+        cor.options.onKill()
+      }
       setDone(cor, options)
     }
   }

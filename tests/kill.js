@@ -214,4 +214,23 @@ describe('kill', () => {
     })
   })
 
+  it('invokes onKill handler', (done) => {
+    let here1 = false, here2 = false
+    run(function*() {
+      const cor = run(function*() {
+        run(function*() {
+          yield Promise.delay(10000)
+        }).onKill(() => {here2 = true})
+        yield Promise.delay(10000)
+      }).onKill(() => {here1 = true})
+      run(function*() {
+        yield Promise.delay(100)
+        kill(cor)
+        assert.isOk(here1)
+        assert.isOk(here2)
+        done()
+      })
+    })
+  })
+
 })

@@ -1,6 +1,7 @@
-import {run, createChannel} from '../dist'
-import {randomInt, delay} from './utils'
 import {assert} from 'chai'
+import Promise from 'bluebird'
+import {run, createChannel, kill} from '../dist'
+import {randomInt, delay} from './utils'
 
 describe('messaging', () => {
 
@@ -30,5 +31,22 @@ describe('messaging', () => {
 
     }))
   }
+
+  it('Does not take when killed', () => run(function*() {
+    const ch = createChannel()
+    const cor = run(function*() {
+      yield ch.take()
+    })
+    run(function*() {
+      yield Promise.delay(100)
+      ch.put('hello')
+    })
+    run(function*() {
+      yield Promise.delay(50)
+      kill(cor)
+      const msg = yield ch.take()
+      assert.equal(msg, 'hello')
+    })
+  }))
 
 })

@@ -69,7 +69,7 @@ describe('mult', () => {
     ch.put(1)
     ch.put(2)
 
-    yield Promise.delay(100)
+    yield Promise.delay(150)
     assert.deepEqual(all.sort(), [1, 1, 2, 2])
     kill(c1)
     kill(c2)
@@ -105,6 +105,36 @@ describe('mult', () => {
     assert.deepEqual(res, [[1, 2], ['much'], [3, 4]])
   }))
 
+  it('stops', (done) => {
+    run(function*() {
+      const ch = createChannel()
+      const mlt = mult(ch)
+      const out = mlt.subscribe()
+      run(function*() {
+        yield Promise.delay(100)
+        ch.put('msg1')
+        yield Promise.delay(100)
+        ch.put('msg2')
+      })
+      run(function*() {
+        while (true) {
+          const msg1 = yield out.take()
+          assert.equal(msg1, 'msg1')
+        }
+      })
+      run(function*() {
+        yield Promise.delay(150)
+        mlt.stop()
+        const msg2 = yield ch.take()
+        assert.equal(msg2, 'msg2')
+        done()
+      })
+      run(function*() {
+        yield Promise.delay(300)
+        //done()
+      })
+    })
+  })
 })
 
 describe('sliding channel', () => {
@@ -139,4 +169,3 @@ describe('dropping channel', () => {
     })
   }))
 })
-
