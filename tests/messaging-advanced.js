@@ -69,7 +69,7 @@ describe('mult', () => {
     ch.put(1)
     ch.put(2)
 
-    yield Promise.delay(100)
+    yield Promise.delay(150)
     assert.deepEqual(all.sort(), [1, 1, 2, 2])
     kill(c1)
     kill(c2)
@@ -135,7 +135,6 @@ describe('mult', () => {
       })
     })
   })
-
 })
 
 describe('sliding channel', () => {
@@ -170,4 +169,3 @@ describe('dropping channel', () => {
     })
   }))
 })
-
