@@ -20,8 +20,11 @@ export function mult(source) {
     for (let arg of args) {
       if (isChannel(arg)) {
         res.channel = arg
-      } else {
+      } else if (typeof arg === 'function') {
         res.transducer = arg
+      } else {
+        console.error('Expected channel or transducer here, got', arg, 'of type', typeof arg)
+        throw new Error('Expected channel or transducer here')
       }
     }
     if (res.channel == null) {
