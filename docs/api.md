@@ -1,7 +1,8 @@
 # Coroutines
 
 ### yacol.run(fn, ...args)
-Returns Coroutine object. `fn(...args)` should return either a Promise or a generator function. 
+Returns Coroutine object. `fn(...args)` should return either a Promise or a generator (i.e. `fn`
+should be a generator function).
 
 In the generator which is used for spawning a coroutine, writing `var value = yield something` means
 that the execution should pause at the current line, until the asynchronous value is obtained. You
@@ -38,7 +39,7 @@ the same Coroutine on which this was called.
 
 ### coroutine.inspect()
 Turn on the inspect mode. In the inspect mode, you can call `.step()` and `.takeEffect()` on the
-Coroutine.
+Coroutine. Returns the same Coroutine on which this was called.
 
 ### coroutine.takeEffect()
 Only available in inspect mode. `cor.takeEffect()` provides the object describing what
@@ -73,7 +74,7 @@ If `cor` has ended because of error, `takeEffect()` will yield:
 Note that `cor` is paused at the current yield and does not continue its execution until
 `cor.step(val)` is called.
 
-### coroutine.step(val) 
+### coroutine.step(val)
 Only available in an inspect mode. Calling `cor.step(val)` will resume `cor` execution until the next
 `yield`, using `val` as the yielded value for the previous `yield`.
 
@@ -82,7 +83,7 @@ For this and **all child coroutines** of the current coroutine, change the imple
 `runnable_i` to `substitute_i`. For example, if you do `cor.patch([function_a, function_b])`, this
 means that wherever in the `cor` when you are trying to run `run(function_a, ...args)` then instead
 of this `run(function_b, ...args)` is executed. Note that patched runnable does not need to be a
-function. For example, 
+function. For example,
 ```
 run("foo", ...args)
 ```
@@ -153,11 +154,11 @@ source channel until mult is `.stop` ed.
 ### multObj.subscribe(channel = null, transducer = null)
 Put every messages that comes to `mult` source channel to the given channel. If transducer is
 specified, it will be applied. If channel is not specified it will create the new standard (i.e. unbounded)
-channel. This channel (whether constructed or obtained) is returned.  
+channel. This channel (whether constructed or obtained) is returned.
 
 The function can be called with any combination of arguments (you can for example omit channel but
 provide transducer). Since channels are quite easily distinguishable from other objects, this is not
-a mess. 
+a mess.
 
 ### multObj.unsubscribe(channel)
 Unsubscribe channel from `mult`
