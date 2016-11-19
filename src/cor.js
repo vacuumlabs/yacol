@@ -228,6 +228,13 @@ export function runDetached(runnable, ...args) {
   return runWithOptions({parent: null}, runnable, ...args)
 }
 
+// perf tweaking: does not wait for the next event loop. All options should be availbale
+// so let's start executing.
+
+export function runImmediately(options, runnable, ...args) {
+  return runWithOptions({...options, immediately: true}, runnable, ...args)
+}
+
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
 // etc. Delagates the actual running to runLater
 
@@ -307,6 +314,7 @@ export function runWithOptions(options, runnable, ...args) {
     catch: (errorHandler) => addToOptions('onError', errorHandler),
     patch,
     inspect,
+    onKill: (fn) => addToOptions('onKill', fn),
     /*
      * in inspect mode:
      *   `step`: step function
@@ -344,7 +352,11 @@ export function runWithOptions(options, runnable, ...args) {
 
   // if parent in inspect mode, don't run the coroutine
   if (!(parentCor != null && parentCor.options.inspectMode)) {
-    setTimeout(() => runLater(cor, runnable, ...args), 0)
+    if (options.immediately) {
+      runLater(cor, runnable, ...args)
+    } else {
+      setTimeout(() => runLater(cor, runnable, ...args), 0)
+    }
   }
 
   return cor
@@ -449,6 +461,9 @@ export function kill(...args) {
     }
     // if error handler throws
     if (!isDone(cor)) {
+      if (cor.options.onKill) {
+        cor.options.onKill()
+      }
       setDone(cor, options)
     }
   }
