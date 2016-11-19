@@ -8,14 +8,21 @@ that the execution should pause at the current line, until the asynchronous valu
 can yield:
 
 - Coroutine. In such a case, value will be the return value of the yielded coroutine.
-- Promise. The value will be the value with what the promise fullfilled.
+- Promise. The value will be the value with what the promise fulfilled.
 
-Errors from a Coroutine / Promise are propagated to the current coroutine. See todolink Error handling section.
+Errors from a Coroutine / Promise are propagated to the current coroutine. See [error handling](https://github.com/vacuumlabs/yacol/blob/master/docs/features.md#error-handling) section.
 
 Finally, there is one more useful exception: if `fn` is a function from node's `fs` module (that kind of
 function that accepts callback as its last argument), then you can run and yield `run(fs.funcName, arg1,
 arg2, ...)`, so for example: `const buf = yield run(fs.readFile, filename)` reads the file into
 buffer.
+
+### yacol.kill(coroutine)
+
+The coroutine and all its children, grandchildren, etc, will stop doing their work. The current
+async operations in progress (i.e. network request in progress) will finish (as there is no way to
+terminate them nicely), however the resulting values of these will be discarded and no more work
+will be performed.
 
 # Coroutine object
 
@@ -36,7 +43,7 @@ Coroutine.
 ### coroutine.takeEffect()
 Only available in inspect mode. `cor.takeEffect()` provides the object describing what
 `cor` tries to do. This object can take different forms as described below. `takeEffect` returns
-coroutine, so you have to yield the object from it. Note that `channel.takeEffect` is internaly just
+coroutine, so you have to yield the object from it. Note that `channel.takeEffect` is internally just
  `.take` on internal `channel.effects` channel.
 
 If `cor` tries to yield sub-coroutine, `takeEffect()` will yield:
@@ -79,23 +86,11 @@ function. For example,
 ```
 run("foo", ...args)
 ```
-would normaly fail (since "foo" is not a function), but if you patch "foo" with some reasonable
+would normally fail (since "foo" is not a function), but if you patch "foo" with some reasonable
 implementation in `.patch`, everything will be OK.
 
-## yacol.kill(coroutine)
-
-The coroutine and all its children, grandchildren, etc, will stop doing their work. The current
-async operations in progress will finish (as there is no way to terminate them nicely), however the
-resulting values of these will be discarded and no more work will be performed.
-
-## yacol.alts({key1: coroutine1, key2: coroutine2, ...})
-Returns coroutine, which returns value from the first finished coroutine. Returns `[key, result]`,
-where `result` is the result of the first coroutine which finished and `key` is the corresponding
-key under which the coroutine was passed to `alts`. If some coroutine finishes with error error
-sooner than some result is produced, the resulting coroutine ends with this error.
-
-
 # Context
+
 ### context.set(key, val)
 Sets `key` to `val` in the current coroutine's context. `key` can be any object; the underlying
 implementation uses ES6 Map, which implies the logic of keys equality during `get`/`set`.
@@ -107,8 +102,8 @@ not found anywhere, `undefined` is returned.
 
 # Messaging
 
-There are few differences to standard CSP implementations:
-- channels cannot be closed and cannot be in errored state. Channel is simply a pipe which exists
+There are few differences to standard CSP implementations and things you should know:
+- channels cannot be closed and cannot be in error state. Channel is simply a pipe which exists
   until someone keeps a reference to it. You don't want to have the channel any more? Just forget
   it and GC will take care of it.
 
@@ -118,6 +113,11 @@ There are few differences to standard CSP implementations:
   producer (thread), if the consumer (thread) does not keep with its pace. However, in JS all
   primitives are callback-based. You cannot ask callback not to happen and you cannot block it. The
   best you can do is put the relevant data to the channel and let it be processed later.
+
+- only one take can be performed on a single channel at one time. If there were multiple takes, this
+  basically implies, there is race-condition for who will consume the message first. This may be a
+  good thing (only) if multiple workers (doing the same thing) race for who will be available first.
+  In single-threaded node environment, we see no use for it.
 
 - the channels plays nice with transducers. When you use transducer for creating some channel, that
   means that transducer will be used on `put` operation to that channel. Yacol uses the most
@@ -131,7 +131,7 @@ There are few differences to standard CSP implementations:
 Creates channel (not bounded to any capacity).
 
 ### channel.put(message)
-putes message to channel. The operation is not blocking
+Puts message to channel. The operation is not blocking
 
 ### channel.take()
 Obtains value from channel. The operation returns coroutine, so you should yield the value from it:
@@ -139,10 +139,10 @@ Obtains value from channel. The operation returns coroutine, so you should yield
 
 # Advanced messaging concepts
 
-### yacol.droppingChannel(capacity, [transducer])
+### yacol.droppingChannel(capacity, transducer = null)
 Creates channel which drops any new message, if the capacity is reached.
 
-### yacol.slidingChannel(capacity, [transducer])
+### yacol.slidingChannel(capacity, transducer = null)
 Creates channel which drops old messages, when the capacity is reached.
 
 ### yacol.mult(channel)
@@ -150,18 +150,14 @@ Used for publish-subscribe. Returns object referred to as `multObj` below. Note 
 all messages that comes to channel (refered to as 'source channel' below) so no one should take out of
 source channel until mult is `.stop` ed.
 
-### multObj.subscribe([channel, transducer])
+### multObj.subscribe(channel = null, transducer = null)
 Put every messages that comes to `mult` source channel to the given channel. If transducer is
-specified, it will be applied. If channel is not specified it will create the new standard (unbounded)
+specified, it will be applied. If channel is not specified it will create the new standard (i.e. unbounded)
 channel. This channel (whether constructed or obtained) is returned.  
 
 The function can be called with any combination of arguments (you can for example omit channel but
 provide transducer). Since channels are quite easily distinguishable from other objects, this is not
 a mess. 
-
-### multSubscription.channel
-contains channel (provided to `multObj.subscribe` or created by it) to which this subscription pipes
-values.
 
 ### multObj.unsubscribe(channel)
 Unsubscribe channel from `mult`
@@ -169,14 +165,22 @@ Unsubscribe channel from `mult`
 ### multObj.stop()
 Stop broadcasting the messages and release the original channel.
 
-### yacol.merge([channel1, channel2, ...], [transducer, output])
+### yacol.merge([channel1, channel2, ...], transducer = null, output = null)
 pipes all messages from channels into one output channel. Similarly as in `mult`, if the output channel is not
-provided, it is constructed (and returned). Similarly as in `mult`, you can use any combination of
+provided, it is constructed (and returned). Similarly as in `mult`, you can specify any combination of
 `transducer` and `output` params.
 
-### yacol.mergeNamed({key1: channel1, key2: channel2, ...}, [transducer, output])
+### yacol.mergeNamed({key1: channel1, key2: channel2, ...}, transducer = null, output = null)
 Same as merge, but the resulting channel will contain `[key_i, msg]`, where `key_i` identifies the
 channel from which the message comes from.
+
+# Misc
+
+### yacol.alts({key1: coroutine1, key2: coroutine2, ...})
+Returns coroutine, which returns value from the first finished coroutine. Returns `[key, result]`,
+where `result` is the result of the first coroutine which finished and `key` is the corresponding
+key under which the coroutine was passed to `alts`. If some coroutine finishes with error error
+sooner than some result is produced, the resulting coroutine ends with this error.
 
 ### yacol.runDetached(fn, ...args)
 

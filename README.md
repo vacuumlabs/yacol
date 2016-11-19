@@ -4,12 +4,16 @@ Yet Another COroutine Library with some unique features.
 
 # Why this
 "Async and await is a great sugar, but we should put it on a better cake",
+<div align="right">
+-- probably Rich Hickey, freely --
+</div>
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -- probably Rich Hickey, freely --
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
 
-These are the most important (and most cool) diferences from standard Promise - based approach. Note
-that all issues are valid for old-school Promise + .then syntax as well as for the cooler Promise + async +
-await approach.
+Yacol is here to help you write better asynchronous code: without dangling promises, with proper
+stacktraces and debug info in general, with the ability to (cleanly) terminate any operation you
+need to and with cool CSP-inspired, built in messaging mechanism. The most important features which
+make `yacol` much cooler than promises are:
 
 <table>
 <tr> 
@@ -26,7 +30,7 @@ with what were the async calls executed! </td>
 <tr>
 <td> Messaging </td>
 <td> Promise represents just one value. For messaging, promise users typically use streams, such as RxJS
-streams. Some people say that if you hike along the long learning curve, it's eventualy a great
+streams. Some people say that if you hike along the long learning curve, it's eventually a great
 thing to work with.
 </td>
 <td>
@@ -37,7 +41,7 @@ just a few basic operations
 
 <tr>
 <td> Error handling</td>
-<td> .catch on promise (async function) catches errors from all promises that are awaited (.then-ed) in the current promise chain. There is no way how to get errors from the danglig promises (async functions)
+<td> .catch on promise (async function) catches errors from all promises that are awaited (.then-ed) in the current promise chain. There is no way how to get errors from the dangling promises (async functions)
 </td>
 <td>
 No error (unless you use the library in a hackish way) get passed around .catch handler on the parent coroutine
@@ -58,7 +62,7 @@ Coroutine completes when all sub-coroutines (awaited or not) have finished
 <tr>
 <td> Forced termination</td>
 <td>
-If you want to kill a complex asynchronous operation (for example, your test timeouted and you want to dispose it cleanly before running next test), but there is nothing you can do. Wait, actually there is: you can use semi-global signalling variable and if-else all the stuff. Gross. 
+If you want to kill a complex asynchronous operation (for example, your test timeouted and you want to dispose it cleanly before running next test), but there is nothing you can do. Wait, actually there is: you can use semi-global signaling variable and if-else all the stuff. Gross. 
 </td>
 <td>
 With coroutines, killing coroutine is as easy as `kill(cor)`. No work will be done after `kill` is
@@ -81,8 +85,9 @@ of doing it). Moreover you can pass fake responses to these operations.
 
 </table>
 
-Apart from this, the library plays really nice with promises and can be easily integrated with
-Express server. Check out [features]().
+For the more detailed breakdown of individual features, see this
+[section](https://github.com/vacuumlabs/yacol/blob/master/docs/features.md).
+Apart from this goodness, the library plays really nice with promises and can be easily integrated with Express server. 
 
 # Simple example
 
@@ -127,9 +132,32 @@ used in many ways:
 - if coroutine reads a value from its context (`context.get` and the value is not found, the read
   escalates to parent context, grandparent context, etc..)
 
-In the basic exaple above, coroutines created from `run(slowSum, 1, 1)` and `run(slowSum, two, 1)` are children
+In the basic example above, coroutines created from `run(slowSum, 1, 1)` and `run(slowSum, two, 1)` are children
 of `run(main)`. The parent-child relationship is important for handling the errors.
+
+# API documentation
+Available [here](https://github.com/vacuumlabs/yacol/blob/master/docs/api.md)
+
+# FAQ
+Available [here](https://github.com/vacuumlabs/yacol/blob/master/docs/faq.md)
+
+# Examples
+Clone the repo, `cd` to `examples` directory and run `npm install` (it is the standalone npm
+package). use `npm run start examplename.js` to execute the example with the local version of
+babel-node
 
 # Contributing
 
-Pullrequests are welcomed.
+Pullrequests are welcomed. Things that would be great to have:
+
+- More cool messaging utils (see js-csp for inspiration)
+- Better tests on expresshelpers
+- Performance optimization
+- support response-describing objects as a return values in expresshelpers. For example, handler
+  should be able to return:
+```
+{
+  headers: {timespent: "100ms"}
+  body: "{name: "john", surname: "doe"}"
+}
+```
