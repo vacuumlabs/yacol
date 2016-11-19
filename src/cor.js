@@ -91,11 +91,7 @@ const runGenerator = (cor, gen) => {
     global[pidString] = oldPid
   }
 
-  function step(val) {
-    setTimeout(() => _step(val), 0)
-  }
-
-  function _step(val) {
+  function step(val, iter = 0) {
     if (isDone(cor)) {return}
     withPid(() => {
       let nxt
@@ -140,7 +136,7 @@ const runGenerator = (cor, gen) => {
             // mistakenly treat the error as unhandled
             nxt.catch((err) => {
               handleError(cor, err)
-            }).then((res) => {step(res)})
+            }).then((res) => {step(res, iter + 1)})
           } else {
             let childHandle
             if (isCor(nxt)) {
@@ -150,7 +146,7 @@ const runGenerator = (cor, gen) => {
             }
             onReturn(childHandle, (err, ret) => {
               if (err == null) {
-                step(ret)
+                step(ret, iter + 1)
               } else {
                 handleError(cor, err)
               }
@@ -162,7 +158,7 @@ const runGenerator = (cor, gen) => {
   }
   // from the moment user calls run() we've already waited for the next event-loop to get here. At
   // this point, we can start execution immediately.
-  _step()
+  step()
 }
 
 function tryEnd(cor) {
