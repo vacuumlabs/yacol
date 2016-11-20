@@ -1,6 +1,6 @@
 import {pidString, corType, terminatedErrorType, runcBadCbArgs} from './constants'
 import {createChannel} from './messaging'
-import {isCor, assertCor} from './utils'
+import {isCor, assertCor, prettyErrorLog} from './utils'
 
 let idSeq = 0
 
@@ -85,9 +85,7 @@ function handleError(cor, err) {
     }
     if (!processed) {
       if (cor.parent == null) {
-        console.error('Uncaught error occured. It is a good ' +
-          'practice to attach a global error handler to the top-level coroutine')
-        console.error(err)
+        prettyErrorLog(err, 'UNHANDLED ERROR')
       } else {
         _handleError(cor.parent, err)
       }

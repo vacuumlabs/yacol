@@ -179,6 +179,11 @@ channel from which the message comes from.
 
 # Misc
 
+### yacol.prettyErrorLog(error)
+`console.error`s the error in a nice fashion. It uses information collected during the program
+execution to produce stacktrace with much more info than typical stacktraces have. This function is
+used by default for unhandled errors on the root coroutine.
+
 ### yacol.alts({key1: coroutine1, key2: coroutine2, ...})
 Returns coroutine, which returns value from the first finished coroutine. Returns `[key, result]`,
 where `result` is the result of the first coroutine which finished and `key` is the corresponding

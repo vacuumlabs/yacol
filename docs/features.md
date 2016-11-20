@@ -280,5 +280,4 @@ runnable: [Function], args: []
 ```
 
 Not only you see all the relevant coroutines calling each other, you even see names of function
-being called and arguments with which those functions were called! The only thing necessary to have
-such stacktraces is to attach `prettyErrorLog` as a top-level error handler.
+being called and arguments with which those functions were called!

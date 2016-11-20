@@ -1,4 +1,4 @@
-import {run, prettyErrorLog} from 'yacol'
+import {run} from 'yacol'
 
 function* a(n) {
   throw new Error('yuck fou')
@@ -21,4 +21,4 @@ function* d(n) {
 
 run(function*() {
   run(d, 1)
-}).catch(prettyErrorLog)
+})

@@ -113,10 +113,10 @@ export function prettyStacktrace(stacktrace) {
   return res.join('\n')
 }
 
-function prettyError(e) {
+function prettyError(e, str = 'ERROR') {
   const res = []
   let cor = e.cor
-  res.push('--- ERROR ----')
+  res.push(`--- ${str} ----`)
   res.push(`Error: ${e.message}`)
   res.push(prettyStacktrace(e.stack))
   while (true) {
@@ -132,6 +132,6 @@ function prettyError(e) {
   }
 }
 
-export function prettyErrorLog(e) {
-  console.error(prettyError(e).join('\n'))
+export function prettyErrorLog(e, str) {
+  console.error(prettyError(e, str).join('\n'))
 }
