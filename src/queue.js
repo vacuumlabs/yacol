@@ -1,3 +1,5 @@
+import multipleTakeError from './constants'
+
 export class Queue {
 
   constructor(options = {}) {
@@ -44,8 +46,10 @@ export class Queue {
 
   next = (cb) => {
     if (this.waiting != null) {
-      throw new Error('Cannot do multiple takes from one channel ' +
+      const err = new Error('Cannot do multiple takes from one channel ' +
         'at one time. See documentation for examplanation, why this is a good idea.')
+      err.type = multipleTakeError
+      throw err
     }
     this.waiting = cb
     this.trySatisfy()

@@ -2,6 +2,7 @@ import {assert} from 'chai'
 import Promise from 'bluebird'
 import {run, createChannel, kill} from '../dist'
 import {randomInt, delay} from './utils'
+import multipleTakeError from '../dist/constants'
 
 describe('messaging', () => {
 
@@ -48,5 +49,20 @@ describe('messaging', () => {
       assert.equal(msg, 'hello')
     })
   }))
+
+  it('cannot do multiple takes at once', (done) => {
+    run(function*() {
+      const ch = createChannel()
+      run(function*() {
+        yield ch.take()
+      })
+      run(function*() {
+        yield ch.take()
+      }).catch((e) => {
+        assert.equal(e.type, multipleTakeError)
+        done()
+      })
+    })
+  })
 
 })
