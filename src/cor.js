@@ -110,7 +110,7 @@ const runGenerator = (cor, gen) => {
     global[pidString] = oldPid
   }
 
-  function step(val, iter = 0) {
+  function step(val) {
     if (isDone(cor)) {return}
     withPid(() => {
       let nxt
@@ -155,7 +155,7 @@ const runGenerator = (cor, gen) => {
             // mistakenly treat the error as unhandled
             nxt.catch((err) => {
               handleError(cor, err)
-            }).then((res) => {step(res, iter + 1)})
+            }).then((res) => {step(res)})
           } else {
             let childHandle
             if (isCor(nxt)) {
@@ -165,7 +165,7 @@ const runGenerator = (cor, gen) => {
             }
             onReturn(childHandle, (err, ret) => {
               if (err == null) {
-                step(ret, iter + 1)
+                step(ret)
               } else {
                 handleError(cor, err)
               }
