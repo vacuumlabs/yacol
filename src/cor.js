@@ -1,4 +1,4 @@
-import {pidString, corType, builtinFns, terminatedErrorType} from './constants'
+import {pidString, corType, terminatedErrorType, runcBadCbArgs} from './constants'
 import {createChannel} from './messaging'
 import {isCor, assertCor} from './utils'
 
@@ -16,9 +16,28 @@ const runPromise = (cor, promise) => {
   })
 }
 
-const runBuiltin = (cor, runnable, args) => {
+const runNodeCbAcceptingFn = (cor, runnable, args) => {
   const promise = new Promise((resolve, reject) => {
-    runnable(...args, (err, res) => {
+    runnable(...args, (...cbargs) => {
+      let err
+      if (cbargs.length > 2) {
+        err = new Error('the callback was executed with wrong number of arguments. ' +
+          'Node style callbacks support 0, 1 or 2 arguments')
+      } else if (cbargs.length === 2) {
+        if (cbargs[0] != null) {
+          err = new Error('the callback was executed with two arguments, but the first argument is not null!')
+        }
+      } else if (cbargs.length === 1 && cbargs[0] != null) {
+        if (!(cbargs[0] instanceof Error)) {
+          err = new Error('the callback was executed with one arguments, but it doesn\'t look like error!')
+        }
+      }
+      if (err == null) {
+        err = cbargs[0]
+      } else {
+        err.type = runcBadCbArgs
+      }
+      let res = cbargs[1]
       if (err == null) {
         resolve(res)
       } else {
@@ -212,21 +231,29 @@ function resolvePatched(cor, runnable) {
   return runnable
 }
 
+// see documentation
 export function run(runnable, ...args) {
   return runWithOptions({}, runnable, ...args)
 }
 
+/* `parent` is used as a parent for the newly created coroutine. This creates other-than-default
+ * coroutine hierarchy and should be used with care */
 export function runWithParent(parent, runnable, ...args) {
   return runWithOptions({parent}, runnable, ...args)
 }
 
+/* runs coroutine as a top-level one, i.e. the parent is null instead of currently running coroutine
+ * */
 export function runDetached(runnable, ...args) {
   return runWithOptions({parent: null}, runnable, ...args)
 }
 
+export function runc(runnable, ...args) {
+  return runWithOptions({nsc: true}, runnable, ...args)
+}
+
 // perf tweaking: does not wait for the next event loop. All options should be availbale
 // so let's start executing.
-
 export function runImmediately(options, runnable, ...args) {
   return runWithOptions({...options, immediately: true}, runnable, ...args)
 }
@@ -370,13 +397,13 @@ function runLater(cor, runnable, ...args) {
         handleError(cor, err)
       }
     })
-  } else if (typeof runnable === 'function' && builtinFns.has(runnable)) {
-    runBuiltin(cor, runnable, args)
+  } else if (cor.options.nsc) {
+    runNodeCbAcceptingFn(cor, runnable, args)
   } else if (typeof runnable === 'function') {
     const gen = runnable(...args)
     if (looksLikePromise(gen)) {
       runPromise(cor, gen)
-    } else if (typeof gen.next === 'function') {
+    } else if (gen != null && typeof gen.next === 'function') {
       runGenerator(cor, gen)
     } else {
       console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)

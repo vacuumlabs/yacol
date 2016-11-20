@@ -1,8 +1,8 @@
 # Coroutines
 
 ### yacol.run(fn, ...args)
-Returns Coroutine object. `fn(...args)` should return either a Promise or a generator (i.e. `fn`
-should be a generator function).
+Returns Coroutine object. `fn(...args)` should return either a generator (i.e. `fn`
+should be a generator function) or a Promise.
 
 In the generator which is used for spawning a coroutine, writing `var value = yield something` means
 that the execution should pause at the current line, until the asynchronous value is obtained. You
@@ -13,10 +13,12 @@ can yield:
 
 Errors from a Coroutine / Promise are propagated to the current coroutine. See [error handling](https://github.com/vacuumlabs/yacol/blob/master/docs/features.md#error-handling) section.
 
-Finally, there is one more useful exception: if `fn` is a function from node's `fs` module (that kind of
-function that accepts callback as its last argument), then you can run and yield `run(fs.funcName, arg1,
-arg2, ...)`, so for example: `const buf = yield run(fs.readFile, filename)` reads the file into
-buffer.
+### yacol.runc(fn, ...args)
+Creates coroutine from node-style-callback accepting function `fn`. Yacol expects, that `fn(...args,
+cb)` will execute callback with two arguments: Error (if any) and result of the asynchronous
+calculation. For example
+`const buf = yield runc(fs.readFile, filename)`
+reads the file into buffer.
 
 ### yacol.kill(coroutine)
 

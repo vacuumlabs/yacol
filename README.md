@@ -8,15 +8,13 @@ Yet Another COroutine Library with some unique features.
 -- probably Rich Hickey, freely --
 </div>
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
-
 Yacol is here to help you write better asynchronous code: without dangling promises, with proper
 stacktraces and debug info in general, with the ability to (cleanly) terminate any operation you
 need to and with cool CSP-inspired, built in messaging mechanism. The most important features which
 make `yacol` much cooler than promises are:
 
 <table>
-<tr> 
+<tr>
 <th> Issue </th> <th> Promises </th> <th> Yacol </th>
 </tr>
 
@@ -62,7 +60,7 @@ Coroutine completes when all sub-coroutines (awaited or not) have finished
 <tr>
 <td> Forced termination</td>
 <td>
-If you want to kill a complex asynchronous operation (for example, your test timeouted and you want to dispose it cleanly before running next test), but there is nothing you can do. Wait, actually there is: you can use semi-global signaling variable and if-else all the stuff. Gross. 
+If you want to kill a complex asynchronous operation (for example, your test timeouted and you want to dispose it cleanly before running next test), but there is nothing you can do. Wait, actually there is: you can use semi-global signaling variable and if-else all the stuff. Gross.
 </td>
 <td>
 With coroutines, killing coroutine is as easy as `kill(cor)`. No work will be done after `kill` is
@@ -87,7 +85,7 @@ of doing it). Moreover you can pass fake responses to these operations.
 
 For the more detailed breakdown of individual features, see this
 [section](https://github.com/vacuumlabs/yacol/blob/master/docs/features.md).
-Apart from this goodness, the library plays really nice with promises and can be easily integrated with Express server. 
+Apart from this goodness, the library plays really nice with promises and can be easily integrated with Express server.
 
 # Simple example
 

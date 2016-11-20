@@ -1,7 +1,7 @@
-import {run, onReturn} from '../dist'
+import {run, runc, onReturn} from '../dist'
 import {assert} from 'chai'
 import {resetTimer, timeApprox, delay} from './utils'
-import fs from 'fs'
+import {runcBadCbArgs} from '../dist/constants'
 
 const inc = function*(a, b) {
   yield run(delay, 100)
@@ -125,17 +125,6 @@ describe('basics', () => {
     assert.equal(res, 1)
   })
 
-  it('can yield fs functions directly ', (done) => {
-    run(function*() {
-      const filename = './__delete__me__'
-      yield run(fs.writeFile, filename, 'much data')
-      const res = yield run(fs.readFile, filename)
-      yield run(fs.unlink, filename)
-      assert.equal(res.toString('utf-8'), 'much data')
-      done()
-    })
-  })
-
   it('onReturn on already errored coroutine', (done) => {
     run(function*() {
       const c = run(function*() {
@@ -149,5 +138,81 @@ describe('basics', () => {
       })
     })
   })
+})
+
+function slowSum(a, b, cb) {
+  setTimeout(() => {
+    if (a < 0) {
+      cb(new Error('low'))
+    } else {
+      cb(null, a + b)
+    }
+  }, 10)
+}
+
+function slowSumNotNodeCallback1(a, b, cb) {
+  setTimeout(() => {
+    cb(a + b)
+  }, 10)
+}
+
+function slowSumNotNodeCallback2(a, b, cb) {
+  setTimeout(() => {
+    cb(a, b)
+  }, 10)
+}
+
+function slowSumNotNodeCallback3(a, b, cb) {
+  setTimeout(() => {
+    cb(a, b, a, b)
+  }, 10)
+}
+
+describe('runc', () => {
+
+  it('basics', (done) => {
+    run(function*() {
+      const res = yield runc(slowSum, 1, 2)
+      assert.equal(res, 3)
+      done()
+    })
+  })
+
+  it('error from callback', (done) => {
+    run(function*() {
+      yield runc(slowSum, -1, 2)
+    }).catch((e) => {
+      assert.equal(e.message, 'low')
+      done()
+    })
+  })
+
+  it('error on wrong callback type 1', (done) => {
+    run(function*() {
+      yield runc(slowSumNotNodeCallback1, 1, 2)
+    }).catch((e) => {
+      assert.equal(e.type, runcBadCbArgs)
+      done()
+    })
+  })
+
+  it('error on wrong callback type 2', (done) => {
+    run(function*() {
+      yield runc(slowSumNotNodeCallback2, 1, 2)
+    }).catch((e) => {
+      assert.equal(e.type, runcBadCbArgs)
+      done()
+    })
+  })
+
+  it('error on wrong callback type 3', (done) => {
+    run(function*() {
+      yield runc(slowSumNotNodeCallback3, 1, 2)
+    }).catch((e) => {
+      assert.equal(e.type, runcBadCbArgs)
+      done()
+    })
+  })
 
 })
+
