@@ -21,7 +21,7 @@
     "eslint-plugin-import": "^2.0.0",
     "express": "^4.14.0",
     "mocha": "^3.1.2",
-    "yacol": "0.5.0"
+    "yacol": "0.6.0"
   },
   "engines": {
     "node": ">=6.2.0"
