@@ -121,19 +121,75 @@ function (and some arguments for it). Coroutines resembles processes from your o
 collaborative multitasking.
 
 When coroutine successfully terminates, it produces a single return value. This value can be yielded
-by other coroutines. Furthermore, coroutine is aware of its parent - the coroutine, during which run
-it was created. This way, complex parent-child coroutine hierarchy is created. This hierarchy is
+by other coroutines. Furthermore, coroutine is aware of its parent - the coroutine, during which
+execution it was created. This way, complex parent-child coroutine hierarchy is created. This hierarchy is
 used in many ways:
 
 - Coroutine terminates only after it's generator returns and all the children coroutines
-  terminates
-- If error is thrown, it can be caught on parent, grandparent, etc..,  coroutine.
+  terminate
+- If an error is thrown, it can be caught on parent, grandparent, etc..,  coroutine.
 - `kill` will terminate all children, grandchildren, etc, of a coroutine
-- if coroutine reads a value from its context (`context.get` and the value is not found, the read
+- If coroutine get's into error state, all its running children are killed
+- If coroutine reads value from its context (`context.get` and the value is not found, the read
   escalates to parent context, grandparent context, etc..)
 
 In the basic example above, coroutines created from `run(slowSum, 1, 1)` and `run(slowSum, two, 1)` are children
 of `run(main)`. The parent-child relationship is important for handling the errors.
+
+## Error handling in a nutshell
+
+Coroutine can get to error state, when:
+- yielding (result from) another coroutine which gets into the error state
+- yielding from Promise which gets rejected
+- throwing an Error synchronously
+
+When error is produced, coroutine's parent, grandparent, etc gets to error state, until `.catch`
+handler is found. It does not matter whether parent yielded from a coroutine or whether it just run
+it for its side-effects, the error will bubble anyways. Once handler is found, it is used to process
+the error. Return value from the error handler is used as a return value for the coroutine that
+caught the error. For all outside world, it appears that this coroutine ended "naturally" with this
+result.
+
+```javascript
+import {run} from 'yacol'
+
+let c1, c2, c3, c4
+
+c1 = run(function*() {
+  c2 = run(function*() {
+    c3 = run(function*() {
+      throw new Error()
+    })
+  })
+}).catch((e) => 47)
+
+c4 = run(function*() {
+  console.log(yield c1) // will return 47
+  yield c2 // will produce an error
+  yield c3 // will also produce an error
+})
+```
+
+If the handler throws, the error-bubbling process continues with the re-throwed error.
+
+If coroutine `corA` yields the value from the coroutine `corB` and `corB` gets to error state, `corA` also gets to error state. Consistently with paragraphs above, if `corB` catches the error and error handler produces value `val`, `cor1` will yield `val` as a correct result of `corB`. For example, the following code will output 47:
+
+```javascript
+run(function*() {
+  const res = yield run(function*() {
+    return (yield run(function*() {throw new Error()}))
+  }).catch((e) => 47)
+  console.log(res)
+})
+```
+When coroutine get's to the error state, all it's running sub-coroutines are automatically killed. There is
+obviously not much sense in letting these coroutines do their work any more.
+
+When coroutine get's killed, all it's running sub-coroutines are automatically killed and are
+supposed to be in an error state. This means, that if `corA` yields from `corB` and `corB` gets
+killed, `corA` gets to the error state. If `corA` just runs `corB` and is not yielding from it,
+`corA` will continue normally as the "KillError" won't bubble.
+
 
 # API documentation
 Available [here](https://github.com/vacuumlabs/yacol/blob/master/docs/api.md)

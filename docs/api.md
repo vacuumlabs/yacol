@@ -22,6 +22,9 @@ reads the file into buffer.
 
 ### yacol.kill(coroutine)
 
+:information_source: Check out [README](https://github.com/vacuumlabs/yacol#basic-design-principles)
+for some intro to error handling.
+
 The coroutine and all its children, grandchildren, etc, will stop doing their work. The current
 async operations in progress (i.e. network request in progress) will finish (as there is no way to
 terminate them nicely), however the resulting values of these will be discarded and no more work
@@ -42,6 +45,9 @@ const res = yield run(function*() {
 }).catch((e) => 47)
 ```
 
+Check out [README](https://github.com/vacuumlabs/yacol#basic-design-principles) for an intro to
+error handling.
+
 ### coroutine.then(fn)
 In a Promise-like fashion, `fn` is executed when the coroutine finished. Calling `.then` returns a
 new Promise, so you cannot chain `.then` with for example `.inspect` (in this order). Usually, you
@@ -49,6 +55,9 @@ don't need to `.then` coroutines, the feature is useful mostly when you want to 
 with some code that expects Promise; for example, coroutine can be returned by a Mocha test.
 
 ### coroutine.catch(handler)
+:information_source: Check out [README](https://github.com/vacuumlabs/yacol#basic-design-principles)
+for some intro to error handling.
+
 Attaches error handler to the `coroutine`. Handler should be of a type `(err) => returnValue`. Once
 the bubbling error meets the `.catch` handler, the error bubbling is stopped  and the `coroutine` is
 assumed to be done with a given `returnValue`. This means that `coroutine`s parent won't ever know
