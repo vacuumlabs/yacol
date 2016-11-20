@@ -7,6 +7,8 @@ Yet Another COroutine Library with some unique features.
 <div align="right">
 -- probably Rich Hickey, freely --
 </div>
+<br />
+<br />
 
 Yacol is here to help you write better asynchronous code: without dangling promises, with proper
 stacktraces and debug info in general, with the ability to (cleanly) terminate any operation you

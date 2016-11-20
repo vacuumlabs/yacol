@@ -29,6 +29,19 @@ will be performed.
 
 # Coroutine object
 
+### const val = yield coroutine
+Blocks until the `coroutine` and all its spawned child-coroutines finish. Then the `val` will take the
+value returned by the `coroutine`. If `coroutine` (or any child coroutines) produce an error which is
+not handled by `.catch` handler, this error will be propagated to the current coroutine (even if the
+current coroutine is not a parent of `coroutine`). If you wish to yield from coroutine which may
+produce unhandled errors, you can catch those errors and provide on-error return value (in this case 47):
+
+```javascript
+const res = yield run(function*() {
+  return (yield coroutine)
+}).catch((e) => 47)
+```
+
 ### coroutine.then(fn)
 In a Promise-like fashion, `fn` is executed when the coroutine finished. Calling `.then` returns a
 new Promise, so you cannot chain `.then` with for example `.inspect` (in this order). Usually, you
@@ -36,18 +49,22 @@ don't need to `.then` coroutines, the feature is useful mostly when you want to 
 with some code that expects Promise; for example, coroutine can be returned by a Mocha test.
 
 ### coroutine.catch(handler)
-Attaches error handler to the coroutine. Handler should be of a type `(err) => something`. Returns
-the same Coroutine on which this was called.
+Attaches error handler to the `coroutine`. Handler should be of a type `(err) => returnValue`. Once
+the bubbling error meets the `.catch` handler, the error bubbling is stopped  and the `coroutine` is
+assumed to be done with a given `returnValue`. This means that `coroutine`s parent won't ever know
+about the error. Catching the error also affects other coroutines which may yield from `coroutine`.
+These coroutines will observe `returnValue` as a proper value returned by a `coroutine`.
+
+Returns the same Coroutine on which this was called.
 
 ### coroutine.inspect()
 Turn on the inspect mode. In the inspect mode, you can call `.step()` and `.takeEffect()` on the
 Coroutine. Returns the same Coroutine on which this was called.
 
-### coroutine.takeEffect()
-Only available in inspect mode. `cor.takeEffect()` provides the object describing what
-`cor` tries to do. This object can take different forms as described below. `takeEffect` returns
-coroutine, so you have to yield the object from it. Note that `channel.takeEffect` is internally just
- `.take` on internal `channel.effects` channel.
+### yield coroutine.takeEffect()
+Only available in inspect mode. `cor.takeEffect()` yields the object describing what
+`cor` tries to do. This object can take different forms as described below. Note that
+`channel.takeEffect` is internally just `.take` on internal `channel.effects` channel.
 
 If `cor` tries to yield sub-coroutine, `takeEffect()` will yield:
 ```
@@ -91,6 +108,9 @@ run("foo", ...args)
 ```
 would normally fail (since "foo" is not a function), but if you patch "foo" with some reasonable
 implementation in `.patch`, everything will be OK.
+
+Internally, ES6 Map is used to store {runnable: substitute} mapping, which implies how lookup is
+performed.
 
 # Context
 
@@ -136,10 +156,8 @@ Creates channel (not bounded to any capacity).
 ### channel.put(message)
 Puts message to channel. The operation is not blocking
 
-### channel.take()
-Obtains value from channel. The operation returns coroutine, so you should yield the value from it:
-``` const msg = yield channel.take() ```
-
+### yield channel.take()
+Obtains value from channel. If there is no such value, it blocks until the value is available.
 # Advanced messaging concepts
 
 ### yacol.droppingChannel(capacity, transducer = null)
