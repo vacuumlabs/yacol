@@ -146,7 +146,7 @@ There are a few differences to standard CSP implementations, and a few things yo
   primitives are callback-based. You cannot ask callback not to happen and you cannot block it. The
   best you can do is put the relevant data to the channel and let it be processed later.
 
-- only one take can be performed on a single channel at one time. If there were multiple takes, this
+- only one take can be "waiting" on a single channel at one time. If there were multiple takes, this
   basically implies that there is race-condition for who will consume the message first. This may be a
   good thing (only) if multiple workers (doing the same thing) race for who will be available first.
   In single-threaded node environment, we see no use for it.
