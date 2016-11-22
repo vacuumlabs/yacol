@@ -3,7 +3,7 @@
 Yet Another COroutine Library with some unique features.
 
 # Why this
-"Async and await is a great sugar, but we should put it on a better cake",
+"Async and await is great sugar, but we should put it on a better cake",
 <div align="right">
 -- probably Rich Hickey, freely --
 </div>
@@ -12,7 +12,7 @@ Yet Another COroutine Library with some unique features.
 
 Yacol is here to help you write better asynchronous code: without dangling promises, with proper
 stacktraces and debug info in general, with the ability to (cleanly) terminate any operation you
-need to and with cool CSP-inspired, built in messaging mechanism. The most important features which
+need to, and with cool CSP-inspired built in messaging mechanism. The most important features which
 make `yacol` much cooler than promises are:
 
 <table>
@@ -23,13 +23,13 @@ make `yacol` much cooler than promises are:
 <tr>
 <td> Stacktraces </td>
 <td> captures only relevant info from the last asynchronous call </td>
-<td> captures **all relevant info** from the whole chain of async calls. You even see arguments
-with what were the async calls executed! </td>
+<td> captures **all relevant info** from the whole chain of async calls. You even get arguments
+with which the async calls were executed! </td>
 </tr>
 
 <tr>
 <td> Messaging </td>
-<td> Promise represents just one value. For messaging, promise users typically use streams, such as RxJS
+<td> A promise represents just one value. For messaging, promise users typically use streams, such as RxJS
 streams. Some people say that if you hike along the long learning curve, it's eventually a great
 thing to work with.
 </td>
@@ -51,22 +51,22 @@ No error (unless you use the library in a hackish way) get passed around .catch 
 <tr>
 <td> When things complete</td>
 <td>
-Asynchronous operation completes, when all awaited / .then-ed promises completes. There is no way to
+Asynchronous operation completes when all awaited / .then-ed promises finish. There is no way to
 wait for dangling promises
 </td>
 <td>
-Coroutine completes when all sub-coroutines (awaited or not) have finished
+Coroutine completes when all sub-coroutines (awaited or not) finish
 </td>
 </tr>
 
 <tr>
 <td> Forced termination</td>
 <td>
-If you want to kill a complex asynchronous operation (for example, your test timeouted and you want to dispose it cleanly before running next test), but there is nothing you can do. Wait, actually there is: you can use semi-global signaling variable and if-else all the stuff. Gross.
+If you want to kill a complex asynchronous operation (for example, your test timeouted and you want to dispose it cleanly before running next test), there is nothing you can do. Wait, actually there is: you can use semi-global signaling variable and if-else all the stuff. Gross.
 </td>
 <td>
 With coroutines, killing coroutine is as easy as `kill(cor)`. No work will be done after `kill` is
-called, feel free to move on the next test in your suite.
+called, feel free to move on to the next test in your suite.
 </td>
 </tr>
 
@@ -78,8 +78,8 @@ doing the real stuff. Finally, mocks (and co.) will help you to reason (and asse
 do
 </td>
 <td>
-When calling `.inspect()` on a coroutine, the coroutine will tell you what it tries to do (instead
-of doing it). Moreover you can pass fake responses to these operations.
+When calling `.inspect()` on a coroutine, the coroutine will be telling you what it is trying to yield (instead
+of running it). Moreover, you can pass fake responses to these operations.
 </td>
 </tr>
 
@@ -87,7 +87,7 @@ of doing it). Moreover you can pass fake responses to these operations.
 
 For the more detailed breakdown of individual features, see this
 [section](https://github.com/vacuumlabs/yacol/blob/master/docs/features.md).
-Apart from this goodness, the library plays really nice with promises and can be easily integrated with Express server.
+Apart from this goodness, `yacol` plays really nice with promises and can be easily integrated with Express server.
 
 # Simple example
 
@@ -103,7 +103,7 @@ function* slowSum(a, b) {
 }
 
 function* main() {
-  // run(fn, ...args) creates coroutine from generator function fn; args are passed as an arguments
+  // run(fn, ...args) creates coroutine from generator function fn; args are passed as arguments
   // to fn
   const two = yield run(slowSum, 1, 1)
   console.log(two)
@@ -116,8 +116,8 @@ run(main)
 
 # Basic design principles
 
-Yacol is organized around the concept of coroutine. This is created from a generator
-function (and some arguments for it). Coroutines resembles processes from your operating system but with
+Yacol is organized around the concept of a coroutine. This is created from a generator
+function (and some arguments for it). Coroutines resemble processes from your operating system, but with
 collaborative multitasking.
 
 When coroutine successfully terminates, it produces a single return value. This value can be yielded
@@ -125,30 +125,29 @@ by other coroutines. Furthermore, coroutine is aware of its parent - the corouti
 execution it was created. This way, complex parent-child coroutine hierarchy is created. This hierarchy is
 used in many ways:
 
-- Coroutine terminates only after it's generator returns and all the children coroutines
+- A coroutine terminates only after its generator returns and all its children coroutines
   terminate
-- If an error is thrown, it can be caught on parent, grandparent, etc..,  coroutine.
-- `kill` will terminate all children, grandchildren, etc, of a coroutine
-- If coroutine get's into error state, all its running children are killed
-- If coroutine reads value from its context (`context.get` and the value is not found, the read
-  escalates to parent context, grandparent context, etc..)
+- If an error is thrown, it can be caught on parent, grandparent, etc.,  coroutine.
+- `kill` will terminate all children, grandchildren, etc., of a coroutine
+- If a coroutine get's into error state, all its running children are killed
+- If a coroutine reads value from its context (`context.get`) and the value is not found, the read
+  escalates to parent context, grandparent context, etc.
 
 In the basic example above, coroutines created from `run(slowSum, 1, 1)` and `run(slowSum, two, 1)` are children
 of `run(main)`. The parent-child relationship is important for handling the errors.
 
 ## Error handling in a nutshell
 
-Coroutine can get to error state, when:
-- yielding (result from) another coroutine which gets into the error state
+Coroutine can get into error state when:
+- yielding (result from) another coroutine which gets into error state
 - yielding from Promise which gets rejected
 - throwing an Error synchronously
 
-When error is produced, coroutine's parent, grandparent, etc gets to error state, until `.catch`
-handler is found. It does not matter whether parent yielded from a coroutine or whether it just run
-it for its side-effects, the error will bubble anyways. Once handler is found, it is used to process
+When an error is produced, also coroutine's parent, grandparent, etc. get to error state, until `.catch`
+handler is found. It does not matter whether parent yielded from a coroutine or whether it just ran
+it for its side-effects, the error will bubble anyways. Once the error handler is found, it is used to process
 the error. Return value from the error handler is used as a return value for the coroutine that
-caught the error. For all outside world, it appears that this coroutine ended "naturally" with this
-result.
+caught the error. This coroutine appears to have ended "naturally" with this result to all outside world.
 
 ```javascript
 import {run} from 'yacol'
@@ -182,13 +181,13 @@ run(function*() {
   console.log(res)
 })
 ```
-When coroutine get's to the error state, all it's running sub-coroutines are automatically killed. There is
+When a coroutine gets to error state, all its running sub-coroutines are automatically killed. There is
 obviously not much sense in letting these coroutines do their work any more.
 
-When coroutine get's killed, all it's running sub-coroutines are automatically killed and are
-supposed to be in an error state. This means, that if `corA` yields from `corB` and `corB` gets
-killed, `corA` gets to the error state. If `corA` just runs `corB` and is not yielding from it,
-`corA` will continue normally as the "KillError" won't bubble.
+When a coroutine gets killed, all its running sub-coroutines are automatically killed and are
+supposed to be in error state. This means that if `corA` yields from `corB` and `corB` gets
+killed, `corA` gets to error state. If `corA` just runs `corB` and is not yielding from it,
+`corA` will continue normally, since the "KillError" does not bubble.
 
 
 # API documentation
@@ -204,12 +203,12 @@ babel-node
 
 # Contributing
 
-Pullrequests are welcomed. Things that would be great to have:
+Pullrequests are welcome. Things that would be great to have:
 
 - More cool messaging utils (see js-csp for inspiration)
 - Better tests on expresshelpers
 - Performance optimization
-- support response-describing objects as a return values in expresshelpers. For example, handler
+- support response-describing objects as return values in expresshelpers. For example, handler
   should be able to return:
 ```
 {
