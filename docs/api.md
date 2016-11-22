@@ -142,9 +142,10 @@ There are a few differences to standard CSP implementations, and a few things yo
 - putting messages to channels is always a synchronous operation (you don't have to yield
   `channel.put()`). In other words, yacol will never block you on this operation. The reason behind
   this decision is more fundamental: In multithreading environment it might make sense to block the
-  producer (thread), if the consumer (thread) does not keep with its pace. However, in JS all
-  primitives are callback-based. You cannot ask callback not to happen and you cannot block it. The
-  best you can do is put the relevant data to the channel and let it be processed later.
+  producer (thread), if the consumer (thread) does not keep with its pace. However, in JS there are
+  no multiple threads, and the eventloop architecture ensures that every callback will eventually
+  happen, so it does not make sense to block it. The best you can do is put the relevant data to the
+  channel and let it be processed later.
 
 - only one take can be "waiting" on a single channel at one time. If there were multiple takes, this
   basically implies that there is race-condition for who will consume the message first. This may be a
