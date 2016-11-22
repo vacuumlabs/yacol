@@ -3,9 +3,12 @@
 Yet Another COroutine Library with some unique features.
 
 # Why this
-"Async and await is great sugar, but we should put it on a better cake",
+"... Promises and Futures are sort of lightweight constructs, you know, that are one-night-stands,
+right? They're just handoffs or call and return scenarios. They can't really model enduring
+connections. And so they're not actually helpful for this. So it's sugar. I mean, it's good sugar,
+but I felt like we should put it on a better cake."
 <div align="right">
--- probably Rich Hickey, freely --
+-- Rich Hickey --
 </div>
 <br />
 <br />
@@ -189,6 +192,8 @@ supposed to be in error state. This means that if `corA` yields from `corB` and 
 killed, `corA` gets to error state. If `corA` just runs `corB` and is not yielding from it,
 `corA` will continue normally, since the "KillError" does not bubble.
 
+# Features
+Check out more detailed [breakdown of individual features](https://github.com/vacuumlabs/yacol/blob/master/docs/features.md)
 
 # API documentation
 Available [here](https://github.com/vacuumlabs/yacol/blob/master/docs/api.md)
