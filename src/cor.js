@@ -19,28 +19,30 @@ const runPromise = (cor, promise) => {
 const runNodeCbAcceptingFn = (cor, runnable, args) => {
   const promise = new Promise((resolve, reject) => {
     runnable(...args, (...cbargs) => {
-      let err
+
+      let err, res, errMsg
+
       if (cbargs.length > 2) {
-        err = new Error('the callback was executed with wrong number of arguments. ' +
-          'Node style callbacks support 0, 1 or 2 arguments')
-      } else if (cbargs.length === 2) {
-        if (cbargs[0] != null) {
-          err = new Error('the callback was executed with two arguments, but the first argument is not null!')
-        }
-      } else if (cbargs.length === 1 && cbargs[0] != null) {
-        if (!(cbargs[0] instanceof Error)) {
-          err = new Error('the callback was executed with one arguments, but it doesn\'t look like error!')
+        errMsg = 'the callback was executed with wrong number of arguments. ' +
+          'Node style callbacks support 0, 1 or 2 arguments.'
+        console.error(errMsg, '\nProvided arguments:', cbargs)
+      } else {
+        [err, res] = cbargs
+        if (err != null && res != null) {
+          errMsg = 'the callback was executed with two arguments that != null, this should not happen!'
+          console.error(errMsg, '\nProvided arguments:', cbargs)
+        } else if (err != null && !(err instanceof Error)) {
+          errMsg = 'the callback was executed with one arguments, but it doesn\'t look like error!'
+          console.error(errMsg, '\nProvided argument:', err)
+        } else if (err == null) {
+          resolve(res)
+        } else {
+          reject(err)
         }
       }
-      if (err == null) {
-        err = cbargs[0]
-      } else {
+      if (errMsg != null) {
+        err = new Error(errMsg)
         err.type = runcBadCbArgs
-      }
-      let res = cbargs[1]
-      if (err == null) {
-        resolve(res)
-      } else {
         reject(err)
       }
     })
