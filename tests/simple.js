@@ -170,6 +170,15 @@ function slowSumNotNodeCallback3(a, b, cb) {
 
 describe('runc', () => {
 
+  beforeEach(() => {
+    console._error = console.error
+    console.error = () => {}
+  })
+
+  afterEach(() => {
+    console.error = console._error
+  })
+
   it('basics', (done) => {
     run(function*() {
       const res = yield runc(slowSum, 1, 2)
