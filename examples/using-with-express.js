@@ -56,7 +56,7 @@ register(app, 'get', '/world', world)
 register(app, 'use', '/crash', crashMiddleware)
 
 run(function* () {
-  run(runApp, app)
+  run(runApp)
   app.listen(3000, () => {
     console.log('server started. Navigate to localhost:3000/hello, ' +
       'localhost:3000/world, or localhost:3000/context to see something')
