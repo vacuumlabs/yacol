@@ -34,10 +34,9 @@ export function* runApp(app) {
       const which = midds.length
       next(route)
       yield onHeadersPromise
-      if (which >= midds.length) {
-        throw new Error('No non-middleware handler exists for this route')
+      if (which < midds.length) {
+        yield midds[which]
       }
-      yield midds[which]
     }
 
     run(function*() {
