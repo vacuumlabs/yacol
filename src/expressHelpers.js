@@ -4,24 +4,17 @@ import {context} from './context'
 import {createChannel} from './messaging'
 import onHeaders from 'on-headers'
 
-const appToChan = new WeakMap()
 const middlewares = new WeakMap()
 
+const channel = createChannel()
+
 export function register(app, verb, pattern, reqHandler) {
-  if (!appToChan.has(app)) {
-    appToChan.set(app, createChannel())
-  }
-  const reqChannel = appToChan.get(app)
   app[verb](pattern, (req, res, next) => {
-    reqChannel.put([req, res, next, reqHandler])
+    channel.put([req, res, next, reqHandler])
   })
 }
 
-export function* runApp(app) {
-  if (!appToChan.has(app)) {
-    throw new Error('you should register at least one handler before running')
-  }
-  const channel = appToChan.get(app)
+export function* runApp() {
   while (true) {
     const [req, res, next, reqHandler] = yield channel.take()
 
