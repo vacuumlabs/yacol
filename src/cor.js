@@ -236,6 +236,12 @@ export function run(runnable, ...args) {
   return runWithOptions({}, runnable, ...args)
 }
 
+export function coroutine(fn) {
+  return function(...args) {
+    return run(fn, ...args)
+  }
+}
+
 /* `parent` is used as a parent for the newly created coroutine. This creates other-than-default
  * coroutine hierarchy and should be used with care */
 export function runWithParent(parent, runnable, ...args) {
