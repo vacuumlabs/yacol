@@ -1,9 +1,11 @@
-import {run, context} from 'yacol'
+import {context} from 'yacol'
 
-run(function*() {
-  context.set('hello', 'world')
-  run(function*() {
+async function contextDemo() {
+  context.set('hello', 'world');
+  (async () => {
     console.log('if this prints "world", I can read a value from my parent context')
     console.log(context.get('hello'))
-  })
-})
+  })()
+}
+
+contextDemo()

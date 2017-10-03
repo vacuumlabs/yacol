@@ -1,3 +1,9 @@
 {
   "presets": ["node6", "stage-0"],
+  "plugins": [
+      ["transform-async-to-module-method", {
+          "module": "yacol",
+          "method": "coroutine"
+      }]
+  ]
 }
