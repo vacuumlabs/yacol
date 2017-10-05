@@ -1,5 +1,4 @@
 import {pidString, corType, terminatedErrorType, runcBadCbArgs} from './constants'
-import {createChannel} from './messaging'
 import {isCor, assertCor, prettyErrorLog} from './utils'
 
 let idSeq = 0
@@ -51,50 +50,56 @@ const runNodeCbAcceptingFn = (cor, runnable, args) => {
 }
 
 function handleError(cor, err) {
-
-  // cor may already be ended for various reasons. In such a case, do nothing
-  if (isDone(cor)) {
-    return
-  }
-
   // for logging purposes it's handy to remember, at what cor the error happened. However,
   // attaching this directly to err.cor would spam the console
   if (!('cor' in err)) {
     Object.defineProperty(err, 'cor', {value: cor})
   }
 
-  function _handleError(cor, err) {
-    if (isDone(cor)) {return}
-    const options = {}
-    let handler = cor.options.onError
-    let processed
-    if (handler != null) {
-      try {
-        options.returnValue = handler(err)
-        processed = true
-      } catch (errorCaught) {
-        err = errorCaught
-        options.error = err
-        processed = false
-      }
-    } else {
-      options.error = err
-      processed = false
-    }
-    setDone(cor, options)
-    for (let child of cor.children) {
-      kill(child)
-    }
-    if (!processed) {
-      if (cor.parent == null) {
-        prettyErrorLog(err, 'UNHANDLED ERROR')
-      } else {
-        _handleError(cor.parent, err)
-      }
+  if (isDone(cor)) {return}
+  let handler = cor.options.onError
+  let processed
+  const setDoneOptions = {}
+  let errToProcess = err
+
+  const gen = cor.generator
+  if (gen != null) {
+    try {
+      gen.throw(errToProcess)
+      processed = true
+      setDoneOptions.returnValue = undefined // todo returnValue?
+    } catch (err) {
+      errToProcess = err
     }
   }
 
-  _handleError(cor, err)
+  if (!processed && handler != null) {
+    try {
+      setDoneOptions.returnValue = handler(err)
+      processed = true
+    } catch (err) {
+      errToProcess = err
+    }
+  }
+
+  if (!processed) {
+    setDoneOptions.error = errToProcess
+  }
+
+  setDone(cor, setDoneOptions)
+
+  for (let child of cor.children) {
+    kill(child)
+  }
+
+  if (!processed && err !== terminatedError) {
+    if (cor.parent) {
+      handleError(cor.parent, errToProcess)
+    } else {
+      prettyErrorLog(errToProcess, 'UNHANDLED ERROR')
+      throw errToProcess
+    }
+  }
 }
 
 const runGenerator = (cor, gen) => {
@@ -134,8 +139,9 @@ const runGenerator = (cor, gen) => {
         if (cor.options.inspectMode) {
           cor.effects.put({error: err, done: true})
           return
+        } else {
+          handleError(cor, err)
         }
-        handleError(cor, err)
       }
       if (nxt != null) {
         if (nxt.done) {
@@ -175,8 +181,8 @@ const runGenerator = (cor, gen) => {
       }
     })
   }
-  // from the moment user calls run() we've already waited for the next event-loop to get here. At
-  // this point, we can start execution immediately.
+  // from the moment user calls run() we've already waited for the next event-loop cycle to get here. At
+  // this point, the we can start execution immediately.
   step()
 }
 
@@ -218,19 +224,6 @@ function isDone(corr) {
   return (('returnValue' in corr) || ('error' in corr))
 }
 
-function resolvePatched(cor, runnable) {
-  while (true) {
-    if (cor.patchData != null && cor.patchData.has(runnable)) {
-      return cor.patchData.get(runnable)
-    }
-    cor = cor.parent
-    if (cor == null) {
-      break
-    }
-  }
-  return runnable
-}
-
 // see documentation
 export function run(runnable, ...args) {
   return runWithOptions({}, runnable, ...args)
@@ -238,7 +231,9 @@ export function run(runnable, ...args) {
 
 export function coroutine(fn) {
   return function(...args) {
-    return run(fn, ...args)
+    const res = run(fn, ...args)
+    res.fn = fn
+    return res
   }
 }
 
@@ -302,34 +297,12 @@ export function runWithOptions(options, runnable, ...args) {
     }).then(fn)
   }
 
-  function inspect() {
-    addToOptions('inspectMode', true)
-    cor.effects = createChannel()
-    cor.takeEffect = () => cor.effects.take()
-    return cor
-  }
-
-  function patch(...args) {
-    if (cor.patchData != null) {
-      handleError(cor, new Error('patch: For your safety, you cannot patch single coroutine more than once'))
-    }
-    cor.patchData = new Map()
-    for (let arg of args) {
-      if (!(Array.isArray(arg) && arg.length === 2)) {
-        handleError(cor, new Error('patch: all arguments of patch must be arrays of size 2'))
-      }
-      if (cor.patchData.has(arg)) {
-        handleError(cor, new Error('patch: For your safety, you cannot patch single runnable more than once'))
-      }
-      cor.patchData.set(arg[0], arg[1])
-    }
-    return cor
-  }
-
+  // the coroutine type
   const cor = {
     type: corType,
     id,
     context: myZone,
+    generator: null,
     locallyDone: false, // generator has returned
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
     // .catch, .inspect, etc are used to populate this object with info customizing the run
@@ -341,8 +314,7 @@ export function runWithOptions(options, runnable, ...args) {
     returnListeners: new Set(),
     then,
     catch: (errorHandler) => addToOptions('onError', errorHandler),
-    patch,
-    inspect,
+    name: (name) => addToOptions('name', name),
     onKill: (fn) => addToOptions('onKill', fn),
     /*
      * in inspect mode:
@@ -392,9 +364,13 @@ export function runWithOptions(options, runnable, ...args) {
 }
 
 function runLater(cor, runnable, ...args) {
+  // it may happen that the coroutine was already killed
+  if (isDone(cor)) {
+    return
+  }
   // the coroutine is to be started, so no more messing with config from now on
   cor.configLocked = true
-  runnable = resolvePatched(cor, runnable)
+  // todo explore and document
   if (isCor(runnable)) {
     onReturn(runnable, (err, msg) => {
       if (err == null) {
@@ -410,6 +386,7 @@ function runLater(cor, runnable, ...args) {
     if (looksLikePromise(gen)) {
       runPromise(cor, gen)
     } else if (gen != null && typeof gen.next === 'function') {
+      cor.generator = gen
       runGenerator(cor, gen)
     } else {
       console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)
@@ -473,30 +450,29 @@ export function onReturn(cor, cb) {
 const terminatedError = new Error('Coroutine was terminated')
 terminatedError.type = terminatedErrorType
 
+/* kill(cor), or kill(cor, val). In the later case, kills the coroutine with the resulting value
+ * instead of error. OnKill handlers will be runned before the coroutine is marked as done.
+ */
 export function kill(...args) {
   const cor = args[0]
-  if (!isDone(cor)) {
-    let options = {}
-    if (args.length > 1) {
-      options.returnValue = args[1]
-    } else if (cor.options.onError != null) {
-      try {
-        options.returnValue = cor.options.onError(terminatedError)
-      } catch (e) {
-        handleError(cor, e)
-      }
-    } else {
-      options.error = terminatedError
-    }
-    // if error handler throws
-    if (!isDone(cor)) {
-      if (cor.options.onKill) {
-        cor.options.onKill()
-      }
-      setDone(cor, options)
+
+  function maybeInvokeOnKill() {
+    if (cor.options.onKill) {
+      cor.options.onKill()
     }
   }
-  for (let child of cor.children) {
-    kill(child)
+
+  if (!isDone(cor)) {
+    if (args.length > 1) {
+      maybeInvokeOnKill()
+      setDone(cor, {returnValue: args[1]})
+      // coroutine is already done -> killing children won't bubble up
+      for (let child of cor.children) {
+        kill(child)
+      }
+    } else {
+      maybeInvokeOnKill()
+      handleError(cor, terminatedError)
+    }
   }
 }

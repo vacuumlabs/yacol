@@ -118,6 +118,7 @@ describe('kill', () => {
         yield Promise.delay(50)
         kill(c)
       })
+      yield c
     }).catch((e) => {
       assert.equal(e.message, 'yuck fou')
       done()

@@ -1,20 +1,23 @@
-import {run, createChannel} from 'yacol'
+import {createChannel} from 'yacol'
 import Promise from 'bluebird'
 
 const rep = 10
 const chan = createChannel()
 
-run(function*() {
+async function producer() {
   for (let i = 0; i < rep; i++) {
-    yield Promise.delay(Math.random() * 500)
+    await Promise.delay(Math.random() * 500)
     chan.put(i)
   }
-})
+}
 
-run(function*() {
+async function consumer() {
   for (let i = 0; i < rep; i++) {
-    yield Promise.delay(Math.random() * 500)
-    const msg = yield chan.take()
+    await Promise.delay(Math.random() * 500)
+    const msg = await chan.take()
     console.log('got msg', msg)
   }
-})
+}
+
+producer()
+consumer()
