@@ -5,5 +5,4 @@ export const corType = '__yacol__coroutine__handle__type__'
 // error types
 
 export const terminatedErrorType = '__yacol__terminated__error__type__'
-export const runcBadCbArgs = '__yacol__runc__bad__cb__args__'
 export const multipleTakeError = '__yacol__multiple__take__error__'

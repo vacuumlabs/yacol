@@ -1,7 +1,6 @@
-import {run, runc, onReturn} from '../dist'
+import {run, onReturn} from '../dist'
 import {assert} from 'chai'
 import {resetTimer, timeApprox, delay} from './utils'
-import {runcBadCbArgs} from '../dist/constants'
 
 const inc = function*(a, b) {
   yield run(delay, 100)
@@ -139,89 +138,3 @@ describe('basics', () => {
     })
   })
 })
-
-function slowSum(a, b, cb) {
-  setTimeout(() => {
-    if (a < 0) {
-      cb(new Error('low'))
-    } else {
-      cb(null, a + b)
-    }
-  }, 10)
-}
-
-function slowSumNotNodeCallback1(a, b, cb) {
-  setTimeout(() => {
-    cb(a + b)
-  }, 10)
-}
-
-function slowSumNotNodeCallback2(a, b, cb) {
-  setTimeout(() => {
-    cb(a, b)
-  }, 10)
-}
-
-function slowSumNotNodeCallback3(a, b, cb) {
-  setTimeout(() => {
-    cb(a, b, a, b)
-  }, 10)
-}
-
-describe('runc', () => {
-
-  beforeEach(() => {
-    console._error = console.error
-    console.error = () => {}
-  })
-
-  afterEach(() => {
-    console.error = console._error
-  })
-
-  it('basics', (done) => {
-    run(function*() {
-      const res = yield runc(slowSum, 1, 2)
-      assert.equal(res, 3)
-      done()
-    })
-  })
-
-  it('error from callback', (done) => {
-    run(function*() {
-      yield runc(slowSum, -1, 2)
-    }).catch((e) => {
-      assert.equal(e.message, 'low')
-      done()
-    })
-  })
-
-  it('error on wrong callback type 1', (done) => {
-    run(function*() {
-      yield runc(slowSumNotNodeCallback1, 1, 2)
-    }).catch((e) => {
-      assert.equal(e.type, runcBadCbArgs)
-      done()
-    })
-  })
-
-  it('error on wrong callback type 2', (done) => {
-    run(function*() {
-      yield runc(slowSumNotNodeCallback2, 1, 2)
-    }).catch((e) => {
-      assert.equal(e.type, runcBadCbArgs)
-      done()
-    })
-  })
-
-  it('error on wrong callback type 3', (done) => {
-    run(function*() {
-      yield runc(slowSumNotNodeCallback3, 1, 2)
-    }).catch((e) => {
-      assert.equal(e.type, runcBadCbArgs)
-      done()
-    })
-  })
-
-})
-

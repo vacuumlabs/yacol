@@ -1,52 +1,14 @@
-import {pidString, corType, terminatedErrorType, runcBadCbArgs} from './constants'
+import {pidString, corType, terminatedErrorType} from './constants'
 import {isCor, assertCor, prettyErrorLog} from './utils'
 
 let idSeq = 0
 
 const runPromise = (cor, promise) => {
-  if (cor.options.inspectMode) {
-    cor.effects.put({promise})
-    return
-  }
   promise.then((res) => {
     setDone(cor, {returnValue: res})
   }).catch((err) => {
     handleError(cor, err)
   })
-}
-
-const runNodeCbAcceptingFn = (cor, runnable, args) => {
-  const promise = new Promise((resolve, reject) => {
-    runnable(...args, (...cbargs) => {
-
-      let err, res, errMsg
-
-      if (cbargs.length > 2) {
-        errMsg = 'the callback was executed with wrong number of arguments. ' +
-          'Node style callbacks support 0, 1 or 2 arguments.'
-        console.error(errMsg, '\nProvided arguments:', cbargs)
-      } else {
-        [err, res] = cbargs
-        if (err != null && res != null) {
-          errMsg = 'the callback was executed with two arguments that != null, this should not happen!'
-          console.error(errMsg, '\nProvided arguments:', cbargs)
-        } else if (err != null && !(err instanceof Error)) {
-          errMsg = 'the callback was executed with one arguments, but it doesn\'t look like error!'
-          console.error(errMsg, '\nProvided argument:', err)
-        } else if (err == null) {
-          resolve(res)
-        } else {
-          reject(err)
-        }
-      }
-      if (errMsg != null) {
-        err = new Error(errMsg)
-        err.type = runcBadCbArgs
-        reject(err)
-      }
-    })
-  })
-  runPromise(cor, promise)
 }
 
 function handleError(cor, err) {
@@ -65,9 +27,8 @@ function handleError(cor, err) {
   const gen = cor.generator
   if (gen != null) {
     try {
-      gen.throw(errToProcess)
+      setDoneOptions.returnValue = gen.throw(errToProcess)
       processed = true
-      setDoneOptions.returnValue = undefined // todo returnValue?
     } catch (err) {
       errToProcess = err
     }
@@ -104,10 +65,6 @@ function handleError(cor, err) {
 
 const runGenerator = (cor, gen) => {
 
-  if (cor.options.inspectMode) {
-    cor.step = step
-  }
-
   function withPid(what) {
     let oldPid = global[pidString]
     global[pidString] = cor
@@ -121,32 +78,13 @@ const runGenerator = (cor, gen) => {
       let nxt
       try {
         nxt = gen.next(val)
-        if (cor.options.inspectMode) {
-          if (nxt.done) {
-            cor.effects.put({returnValue: nxt.value, done: true})
-            return
-          } else if (isCor(nxt.value)) {
-            cor.effects.put({
-              runnable: nxt.value.runnable,
-              args: nxt.value.args,
-            })
-            return
-          } else if (looksLikePromise(nxt.value)) {
-            cor.effects.put({promise: nxt.value})
-          }
-        }
       } catch (err) {
-        if (cor.options.inspectMode) {
-          cor.effects.put({error: err, done: true})
-          return
-        } else {
-          handleError(cor, err)
-        }
+        handleError(cor, err)
       }
       if (nxt != null) {
         if (nxt.done) {
           if (cor.locallyDone) {
-            throw new Error('myZone.done was already set to true')
+            throw new Error('yacol internal error: myZone.done was already set to true')
           }
           cor.returnValuePending = nxt.value
           cor.locallyDone = true
@@ -173,7 +111,7 @@ const runGenerator = (cor, gen) => {
               if (err == null) {
                 step(ret)
               } else {
-                handleError(cor, err)
+                handleError(cor, err, step)
               }
             })
           }
@@ -249,10 +187,6 @@ export function runDetached(runnable, ...args) {
   return runWithOptions({parent: null}, runnable, ...args)
 }
 
-export function runc(runnable, ...args) {
-  return runWithOptions({nsc: true}, runnable, ...args)
-}
-
 // perf tweaking: does not wait for the next event loop. All options should be availbale
 // so let's start executing.
 export function runImmediately(options, runnable, ...args) {
@@ -305,7 +239,7 @@ export function runWithOptions(options, runnable, ...args) {
     generator: null,
     locallyDone: false, // generator has returned
     configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
-    // .catch, .inspect, etc are used to populate this object with info customizing the run
+    // .catch, .name, etc are used to populate this object with info customizing the run
     options: Object.assign({}, options),
     children: new Set(),
     runnable, // runnable, args and stacktrace are for introspection and debug purposes
@@ -317,10 +251,6 @@ export function runWithOptions(options, runnable, ...args) {
     name: (name) => addToOptions('name', name),
     onKill: (fn) => addToOptions('onKill', fn),
     /*
-     * in inspect mode:
-     *   `step`: step function
-     *   `effects`: channel for pushing the effects
-     *
      * `returnValue`: The value that will be yielded from the coroutine. Can be specified by return
      * statement or error handler. Return value present is semanticaly equivalent to done = true
      *
@@ -351,14 +281,7 @@ export function runWithOptions(options, runnable, ...args) {
     }
   }
 
-  // if parent in inspect mode, don't run the coroutine
-  if (!(parentCor != null && parentCor.options.inspectMode)) {
-    if (options.immediately) {
-      runLater(cor, runnable, ...args)
-    } else {
-      setTimeout(() => runLater(cor, runnable, ...args), 0)
-    }
-  }
+  setTimeout(() => runLater(cor, runnable, ...args), 0)
 
   return cor
 }
@@ -370,18 +293,7 @@ function runLater(cor, runnable, ...args) {
   }
   // the coroutine is to be started, so no more messing with config from now on
   cor.configLocked = true
-  // todo explore and document
-  if (isCor(runnable)) {
-    onReturn(runnable, (err, msg) => {
-      if (err == null) {
-        setDone(cor, {returnValue: msg})
-      } else {
-        handleError(cor, err)
-      }
-    })
-  } else if (cor.options.nsc) {
-    runNodeCbAcceptingFn(cor, runnable, args)
-  } else if (typeof runnable === 'function') {
+  if (typeof runnable === 'function') {
     const gen = runnable(...args)
     if (looksLikePromise(gen)) {
       runPromise(cor, gen)

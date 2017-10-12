@@ -104,7 +104,6 @@ describe('mult', () => {
       })
       run(function*() {
         yield Promise.delay(300)
-        //done()
       })
     })
   })
