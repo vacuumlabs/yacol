@@ -16,16 +16,6 @@ function handleError(cor, err) {
   const setDoneOptions = {}
   let errToProcess = err
 
-  const gen = cor.generator
-  if (gen != null) {
-    try {
-      setDoneOptions.returnValue = gen.throw(errToProcess)
-      processed = true
-    } catch (err) {
-      errToProcess = err
-    }
-  }
-
   if (!processed && handler != null) {
     try {
       setDoneOptions.returnValue = handler(err)
@@ -47,7 +37,11 @@ function handleError(cor, err) {
 
   if (!processed && err !== terminatedError) {
     if (cor.parent) {
-      handleError(cor.parent, errToProcess)
+      if (!cor.awaitedByParent) {
+        handleError(cor.parent, errToProcess)
+      } else {
+        //pass
+      }
     } else {
       prettyErrorLog(errToProcess, 'UNHANDLED ERROR')
       throw errToProcess
@@ -64,47 +58,52 @@ const runGenerator = (cor, gen) => {
     global[pidString] = oldPid
   }
 
+  function processNxt(nxt) {
+    if (nxt.done) {
+      if (cor.locallyDone) {
+        throw new Error('yacol internal error: myZone.done was already set to true')
+      }
+      cor.returnValuePending = nxt.value
+      cor.locallyDone = true
+      tryEnd(cor)
+    } else {
+      nxt = nxt.value
+      if (looksLikePromise(nxt)) {
+        // .catch handler must be attached to promise in the current event loop tick. Otherwise, some
+        // Promise implementations may complain
+        nxt.catch((err) => {
+          handleError(cor, err)
+        }).then((res) => {step(res)})
+      } else if (isCor(nxt)) {
+        nxt.awaitedByParent = true
+        onReturn(nxt, (err, ret) => {
+          if (err == null) {
+            step(ret)
+          } else {
+            try {
+              const nxtNxt = gen.throw(err)
+              processNxt(nxtNxt)
+            } catch (nxtErr) {
+              handleError(cor, err)
+            }
+          }
+        })
+      } else {
+        throw new Error('Yacol internal error: unknow runnable')
+      }
+    }
+  }
+
   function step(val) {
     if (isDone(cor)) {return}
     withPid(() => {
-      let nxt
       try {
+        let nxt
         nxt = gen.next(val)
+        processNxt(nxt)
       } catch (err) {
         handleError(cor, err)
-      }
-      if (nxt != null) {
-        if (nxt.done) {
-          if (cor.locallyDone) {
-            throw new Error('yacol internal error: myZone.done was already set to true')
-          }
-          cor.returnValuePending = nxt.value
-          cor.locallyDone = true
-          tryEnd(cor)
-        } else {
-          nxt = nxt.value
-          if (looksLikePromise(nxt)) {
-            // .catch handler must be attached to promise in the current event loop tick. Otherwise, some
-            // Promise implementations may complain
-            nxt.catch((err) => {
-              handleError(cor, err)
-            }).then((res) => {step(res)})
-          } else {
-            let childHandle
-            if (isCor(nxt)) {
-              childHandle = nxt
-            } else {
-              childHandle = run(nxt)
-            }
-            onReturn(childHandle, (err, ret) => {
-              if (err == null) {
-                step(ret)
-              } else {
-                handleError(cor, err, step)
-              }
-            })
-          }
-        }
+        return
       }
     })
   }

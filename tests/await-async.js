@@ -6,6 +6,7 @@ import {Promise} from 'bluebird'
 beforeEach(resetTimer)
 
 describe('async-await', () => {
+
   it('basics', async () => {
     async function slowSum(a, b) {
       await Promise.delay(100)
@@ -40,19 +41,23 @@ describe('async-await', () => {
   it('catch awaited', (done) => {
 
     async function doThrow() {
-      throw new Error('whoops')
+      await Promise.delay(10)
+      throw new Error('whooopsie')
     }
 
     async function test() {
       try {
+        await Promise.delay(10)
         await doThrow()
       } catch (e) {
-        assert.equal(e.message, 'whoops')
+        console.log('########')
+        //assert.equal(e.message, 'whoopsie')
         done()
       }
     }
 
     test()
+
   })
 
   it('calls catch handler properly', (done) => {
@@ -81,7 +86,7 @@ describe('async-await', () => {
     async function test() {
       try {
         await doThrow()
-      } catch(e) {
+      } catch (e) {
         return 4
       }
     }
