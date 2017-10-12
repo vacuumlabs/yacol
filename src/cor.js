@@ -3,14 +3,6 @@ import {isCor, assertCor, prettyErrorLog} from './utils'
 
 let idSeq = 0
 
-const runPromise = (cor, promise) => {
-  promise.then((res) => {
-    setDone(cor, {returnValue: res})
-  }).catch((err) => {
-    handleError(cor, err)
-  })
-}
-
 function handleError(cor, err) {
   // for logging purposes it's handy to remember, at what cor the error happened. However,
   // attaching this directly to err.cor would spam the console
@@ -92,11 +84,8 @@ const runGenerator = (cor, gen) => {
         } else {
           nxt = nxt.value
           if (looksLikePromise(nxt)) {
-            // We're repeating the logic from `runPromise` here. It would be nice just to `run` the
-            // promise and cor it standard way, however, there is a bluebird-related problem with
-            // such implementation: this way `runPromise` will start only in the next event loop and if the
-            // (rejected) Promise does not have its error handler attached by that time, Bluebird will
-            // mistakenly treat the error as unhandled
+            // .catch handler must be attached to promise in the current event loop tick. Otherwise, some
+            // Promise implementations may complain
             nxt.catch((err) => {
               handleError(cor, err)
             }).then((res) => {step(res)})
@@ -295,17 +284,13 @@ function runLater(cor, runnable, ...args) {
   cor.configLocked = true
   if (typeof runnable === 'function') {
     const gen = runnable(...args)
-    if (looksLikePromise(gen)) {
-      runPromise(cor, gen)
-    } else if (gen != null && typeof gen.next === 'function') {
+    if (gen != null && typeof gen.next === 'function') {
       cor.generator = gen
       runGenerator(cor, gen)
     } else {
       console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)
       handleError(cor, new Error('unknown first argument'))
     }
-  } else if (looksLikePromise(runnable)) {
-    runPromise(runnable, cor)
   } else {
     console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)
     handleError(cor, new Error('unknown first argument'))
