@@ -42,7 +42,7 @@ describe('async-await', () => {
 
     async function doThrow() {
       await Promise.delay(10)
-      throw new Error('whooopsie')
+      throw new Error('whooops')
     }
 
     async function test() {
@@ -50,8 +50,7 @@ describe('async-await', () => {
         await Promise.delay(10)
         await doThrow()
       } catch (e) {
-        console.log('########')
-        //assert.equal(e.message, 'whoopsie')
+        assert.equal(e.message, 'whooops')
         done()
       }
     }
@@ -105,18 +104,27 @@ describe('async-await', () => {
     awaiting()
   })
 
-  it('works with context', async () => {
-
-    async function parent() {
-      context.set('hello', 'world')
-      await Promise.delay(10)
-      async function child() {
-        await Promise.delay(10)
-        assert.equal(context.get('hello'), 'world')
+  it('error caught and rethrowed is propagated', async () => {
+    let here1 = false, here2 = false
+    async function f() {
+      try {
+        await (async function f2() {
+          throw new Error('whooops')
+        })()
+      } catch (err) {
+        here1 = true
+        throw err
       }
-      await child()
     }
-    await parent()
+
+    try {
+      await f()
+    } catch (err) {
+      here2 = true
+    }
+
+    assert.isOk(here1)
+    assert.isOk(here2)
   })
 
 })

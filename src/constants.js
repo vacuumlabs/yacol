@@ -8,7 +8,4 @@ export const corType = '__yacol__coroutine__handle__type__'
 
 export const terminatedErrorType = '__yacol__terminated__error__type__'
 export const multipleTakeError = '__yacol__multiple__take__error__'
-
-// error messages
-
 export const assertCorType = '__yacol__assertCor'

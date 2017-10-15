@@ -18,9 +18,13 @@ function getMessage(channel) {
     function*() {
       const {queue} = channel
       yield new Promise((resolve, reject) => {
-        handle = queue.next((val) => {
-          resolve(val)
-        })
+        try {
+          handle = queue.next((val) => {
+            resolve(val)
+          })
+        } catch (err) {
+          reject(err)
+        }
       })
       return queue.pop()
     })

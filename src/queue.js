@@ -47,7 +47,7 @@ export class Queue {
   next = (cb) => {
     if (this.waiting != null) {
       const err = new Error('Cannot do multiple takes from one channel ' +
-        'at one time. See documentation for examplanation, why this is a good idea.')
+        'at one time. See documentation for explanation, why this is a good idea.')
       err.type = multipleTakeError
       throw err
     }
