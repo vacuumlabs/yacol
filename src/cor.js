@@ -261,20 +261,11 @@ export function runWithOptions(options, runnable, ...args) {
 
   myZone.cor = cor
   if (parentCor != null) {
-    if (options.killOnEnd) {
-      cor.parent = parentCor
-      onReturn(parentCor, (err, res) => {
-        // if cor already terminated, killing do nothing
-        kill(cor)
-        delete cor.parent
-      })
-    } else {
-      makeLink(cor, parentCor)
-      onReturn(cor, (err, res) => {
-        unLink(cor)
-        tryEnd(parentCor)
-      })
-    }
+    makeLink(cor, parentCor)
+    onReturn(cor, (err, res) => {
+      unLink(cor)
+      tryEnd(parentCor)
+    })
   }
 
   setTimeout(() => runLater(cor, runnable, ...args), 0)
