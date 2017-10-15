@@ -65,7 +65,9 @@ const runGenerator = (cor, gen) => {
       }
       cor.returnValuePending = nxt.value
       cor.locallyDone = true
-      tryEnd(cor)
+      // postpone tryEnd to the next eventloop. If there are only unavaited coroutines spawned
+      // inside the parent coroutine, child coroutines may not be
+      setTimeout(() => tryEnd(cor), 0)
     } else {
       nxt = nxt.value
       if (looksLikePromise(nxt)) {
@@ -163,22 +165,30 @@ export function coroutine(fn) {
   }
 }
 
-/* `parent` is used as a parent for the newly created coroutine. This creates other-than-default
- * coroutine hierarchy and should be used with care */
-export function runWithParent(parent, runnable, ...args) {
-  return runWithOptions({parent}, runnable, ...args)
-}
-
-/* runs coroutine as a top-level one, i.e. the parent is null instead of currently running coroutine
- * */
-export function runDetached(runnable, ...args) {
-  return runWithOptions({parent: null}, runnable, ...args)
-}
-
-// perf tweaking: does not wait for the next event loop. All options should be availbale
-// so let's start executing.
-export function runImmediately(options, runnable, ...args) {
-  return runWithOptions({...options, immediately: true}, runnable, ...args)
+// this causes:
+// - parent is listed as child's parent
+// - child is listed amongst parent children
+// - correctly handles parent == null case
+// - correctly handles the case where child.parent is already being set to some coroutine. This is
+//   important when changing parent from the 'lexical' parent to the one specified in options
+function ensureParentChildRelationship(parent, child) {
+  // parent === null means, we are detaching the coroutine. We still want to unlink the previous
+  // parent, though
+  if (parent === undefined) {
+    return
+  }
+  if (child.parent != null) {
+    unLink(child)
+    tryEnd(parent)
+    child.onReturnHandle.dispose()
+  }
+  if (parent != null) {
+    makeLink(child, parent)
+    child.onReturnHandle = onReturn(child, (err, res) => {
+      unLink(child)
+      tryEnd(parent)
+    })
+  }
 }
 
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
@@ -187,8 +197,6 @@ export function runImmediately(options, runnable, ...args) {
 export function runWithOptions(options, runnable, ...args) {
 
   let id = `${idSeq++}`
-  const parentCor = 'parent' in options ? options.parent : global[pidString]
-
   let myZone = {
     public: new Map(),
     // cor: to be specified later
@@ -244,7 +252,12 @@ export function runWithOptions(options, runnable, ...args) {
     returnListeners: new Set(),
     then,
     catch: _catch,
+    /* `parent` is used as a parent for the newly created coroutine. This creates other-than-default
+     * coroutine hierarchy and should be used with care */
+    withParent: (parent) => addToOptions('parent', parent),
+    detached: () => addToOptions('parent', null),
     name: (name) => addToOptions('name', name),
+    getName: () => cor.options.name,
     onKill: (fn) => addToOptions('onKill', fn),
     /*
      * `returnValue`: The value that will be yielded from the coroutine. Can be specified by return
@@ -260,16 +273,8 @@ export function runWithOptions(options, runnable, ...args) {
   }
 
   myZone.cor = cor
-  if (parentCor != null) {
-    makeLink(cor, parentCor)
-    onReturn(cor, (err, res) => {
-      unLink(cor)
-      tryEnd(parentCor)
-    })
-  }
-
+  ensureParentChildRelationship(global[pidString], cor)
   setTimeout(() => runLater(cor, runnable, ...args), 0)
-
   return cor
 }
 
@@ -280,6 +285,13 @@ function runLater(cor, runnable, ...args) {
   }
   // the coroutine is to be started, so no more messing with config from now on
   cor.configLocked = true
+
+  // it's only now that we can determine the parent for sure
+
+  const options = cor.options
+
+  ensureParentChildRelationship(options.parent, cor)
+
   if (typeof runnable === 'function') {
     const gen = runnable(...args)
     if (gen != null && typeof gen.next === 'function') {

@@ -1,4 +1,3 @@
-import {context} from 'yacol'
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
 import {Promise} from 'bluebird'
@@ -33,7 +32,7 @@ describe('async-await', () => {
       timeApprox(0)
     }
     await test()
-    // we wait or all the delays though we do it in parallel
+    // we wait for all the delays in parallel
     timeApprox(200)
 
   })

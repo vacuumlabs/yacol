@@ -1,4 +1,4 @@
-import {runDetached, kill} from './cor'
+import {run, kill} from './cor'
 import {createChannel, putToChannel} from './messaging'
 import {isChannel, assertChannel, isIterable} from './utils'
 import t from 'transducers-js'
@@ -25,14 +25,14 @@ export function mult(source) {
 
   let subscribed = new Map()
 
-  const multCoroutine = runDetached(function* () {
+  const multCoroutine = run(function* () {
     while (true) {
       let what = yield source.take()
       for (let [chan, putFn] of subscribed) {
         putFn(chan, what)
       }
     }
-  })
+  }).detached()
 
   function subscribe(...args) {
     const {channel, transducer = null} = parseChannelAndTransducer(args)
