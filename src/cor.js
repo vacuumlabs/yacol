@@ -205,7 +205,7 @@ export function runWithOptions(options, runnable, ...args) {
     return cor
   }
 
-  function then(fn) {
+  function toPromise() {
     return new Promise((resolve, reject) => {
       onReturn(
         cor,
@@ -216,7 +216,15 @@ export function runWithOptions(options, runnable, ...args) {
             reject(err)
           }
         })
-    }).then(fn)
+    })
+  }
+
+  function then(fn) {
+    return toPromise().then(fn)
+  }
+
+  function _catch(fn) {
+    return toPromise().catch(fn)
   }
 
   // the coroutine type
@@ -235,7 +243,7 @@ export function runWithOptions(options, runnable, ...args) {
     stacktrace: getStacktrace(),
     returnListeners: new Set(),
     then,
-    catch: (errorHandler) => addToOptions('onError', errorHandler),
+    catch: _catch,
     name: (name) => addToOptions('name', name),
     onKill: (fn) => addToOptions('onKill', fn),
     /*
@@ -351,6 +359,8 @@ terminatedError.type = terminatedErrorType
  */
 export function kill(...args) {
   const cor = args[0]
+
+  assertCor(cor)
 
   function maybeInvokeOnKill() {
     if (cor.options.onKill) {

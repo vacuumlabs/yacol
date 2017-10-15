@@ -60,23 +60,6 @@ describe('async-await', () => {
 
   })
 
-  it('calls catch handler properly', (done) => {
-
-    async function doThrow() {
-      throw new Error('whooops')
-    }
-
-    async function test() {
-      doThrow()
-    }
-
-    test().catch((err) => {
-      assert.equal(err.message, 'whooops')
-      done()
-    })
-
-  })
-
   it('return value from catch', async () => {
 
     async function doThrow() {
