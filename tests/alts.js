@@ -1,55 +1,31 @@
-import {run, alts} from '../dist'
-import {randomInt, delay} from './utils'
+import {Promise} from 'bluebird'
 import {assert} from 'chai'
+import {alts} from '../dist'
+import {randomInt} from './utils'
 
-
-export const inc = function*(wait, a, b) {
-  yield run(delay, wait)
+async function inc(wait, a, b) {
+  await Promise.delay(wait)
   return a + b
 }
 
-describe('alts', function(done) {
-
-  // last task take about 2s to finish. Setting limit to 1s means that alts does not wait
-  // for all the tasks to finish.
-  this.timeout(1000)
+describe('alts', () => {
 
   for (let i = 0; i < 5; i++) {
 
-    const n = 20
+    const n = 5
 
-    it('alts', (done) => {
-      run(function*() {
-        const args = {}
-        let minKey = 'id-0'
-        let sum
-        for (let j = 0; j < n; j++) {
-          let time = (j + 1) * 100
-          let a = randomInt(10)
-          let b = randomInt(10)
-          if (j === 0) {
-            sum = a + b
-          }
-          args[`id-${j}`] = run(inc, time, a, b)
-        }
-        for (let j = 0; j < 3 * n; j++) {
-          const ind1 = `id-${randomInt(n)}`
-          const ind2 = `id-${randomInt(n)}`
-          if (ind1 !== ind2) {
-            let tmp = args[ind1]
-            args[ind1] = args[ind2]
-            args[ind2] = tmp
-            if (ind1 === minKey) {
-              minKey = ind2
-            } else if (ind2 === minKey) {
-              minKey = ind1
-            }
-          }
-        }
-        const res = yield run(alts, args)
-        assert.deepEqual(res, [minKey, sum])
-        done()
-      })
+    it('basics', async () => {
+      const args = {}
+      let sum = new Array(n)
+      for (let j = 0; j < n; j++) {
+        let time = (j + 1) * 20
+        let a = randomInt(10)
+        let b = randomInt(10)
+        sum[j] = a + b
+        args[`id-${j}`] = inc(time, a, b)
+      }
+      const res = await alts(args)
+      assert.deepEqual(res, ['id-0', sum[0]])
     })
   }
 })
