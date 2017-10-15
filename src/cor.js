@@ -11,40 +11,20 @@ function handleError(cor, err) {
   }
 
   if (isDone(cor)) {return}
-  let handler = cor.options.onError
-  let processed
-  const setDoneOptions = {}
-  let errToProcess = err
 
-  if (!processed && handler != null) {
-    try {
-      setDoneOptions.returnValue = handler(err)
-      processed = true
-    } catch (err) {
-      errToProcess = err
-    }
-  }
-
-  if (!processed) {
-    setDoneOptions.error = errToProcess
-  }
-
-  setDone(cor, setDoneOptions)
+  setDone(cor, {error: err})
 
   for (let child of cor.children) {
     kill(child)
   }
 
-  if (!processed && err !== terminatedError) {
+  if (err !== terminatedError) {
     if (cor.parent) {
       if (!cor.awaitedByParent) {
-        handleError(cor.parent, errToProcess)
-      } else {
-        //pass
+        handleError(cor.parent, err)
       }
     } else {
-      prettyErrorLog(errToProcess, 'UNHANDLED ERROR')
-      throw errToProcess
+      prettyErrorLog(err, 'UNHANDLED ERROR')
     }
   }
 }
