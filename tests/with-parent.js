@@ -75,7 +75,6 @@ describe('with-parent', () => {
       await Promise.delay(100000)
     })().detached()
 
-    await Promise.delay(100)
-    timeApprox(100)
+    timeApprox(0)
   })
 })

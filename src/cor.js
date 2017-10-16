@@ -54,9 +54,7 @@ const runGenerator = (cor, gen) => {
       }
       cor.returnValuePending = nxt.value
       cor.locallyDone = true
-      // postpone tryEnd to the next eventloop. If there are only unavaited coroutines spawned
-      // inside the parent coroutine, child coroutines may not be
-      setTimeout(() => tryEnd(cor), 0)
+      tryEnd(cor)
     } else {
       nxt = nxt.value
       if (looksLikePromise(nxt)) {
@@ -163,13 +161,14 @@ export function coroutine(fn) {
 //   important when changing parent from the 'lexical' parent to the one specified in options
 function ensureParentChildRelationship(parent, child) {
   // parent === null means, we are detaching the coroutine. We still want to unlink the previous
-  // parent, though
+  // parent though
   if (parent === undefined) {
     return
   }
   if (child.parent != null) {
+    const oldParent = child.parent
     unLink(child)
-    tryEnd(parent)
+    tryEnd(oldParent)
     child.onReturnHandle.dispose()
   }
   if (parent != null) {
