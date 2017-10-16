@@ -360,17 +360,17 @@ export function kill(...args) {
     }
   }
 
-  if (!isDone(cor)) {
-    if (args.length > 1) {
-      maybeInvokeOnKill()
-      setDone(cor, {returnValue: args[1]})
-      // coroutine is already done -> killing children won't bubble up
-      for (let child of cor.children) {
-        kill(child)
-      }
-    } else {
-      maybeInvokeOnKill()
-      handleError(cor, terminatedError)
-    }
+  if (isDone(cor)) {
+    return
+  }
+
+  maybeInvokeOnKill()
+  if (args.length > 1) {
+    setDone(cor, {returnValue: args[1]})
+  } else {
+    setDone(cor, {error: terminatedError})
+  }
+  for (let child of cor.children) {
+    kill(child)
   }
 }

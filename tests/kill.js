@@ -271,4 +271,20 @@ describe('kill', () => {
     assert.isOk(here)
   })
 
+  it('killed coroutine acts as a failed promise', async () => {
+    let here = false
+    async function job() {
+      await Promise.delay(10000)
+    }
+    const jobCor = job()
+    kill(jobCor)
+    await Promise.delay(10)
+    jobCor.catch((err) => {
+      isTerminatedError(err)
+      here = true
+    })
+    await Promise.delay(10)
+    assert.isOk(here)
+  })
+
 })
