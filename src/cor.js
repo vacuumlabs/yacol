@@ -1,4 +1,4 @@
-import {pidString, corType, terminatedErrorType} from './constants'
+import {pidString, corType, terminatedErrorType, badRunnableErrorType} from './constants'
 import {isCor, assertCor, prettyErrorLog} from './utils'
 
 let idSeq = 0
@@ -38,6 +38,15 @@ const runGenerator = (cor, gen) => {
     global[pidString] = oldPid
   }
 
+  function proceedWithError(err) {
+    try {
+      const nxtNxt = gen.throw(err)
+      processNxt(nxtNxt)
+    } catch (nxtErr) {
+      handleError(cor, err)
+    }
+  }
+
   function processNxt(nxt) {
     if (nxt.done) {
       if (cor.locallyDone) {
@@ -66,16 +75,13 @@ const runGenerator = (cor, gen) => {
           if (err == null) {
             step(ret)
           } else {
-            try {
-              const nxtNxt = gen.throw(err)
-              processNxt(nxtNxt)
-            } catch (nxtErr) {
-              handleError(cor, err)
-            }
+            proceedWithError(err)
           }
         })
       } else {
-        throw new Error('Yacol internal error: unknow runnable')
+        const err = new Error(`Awaited object does not look like Coroutine or Promise (typeof: ${typeof nxt})`)
+        err.type = badRunnableErrorType
+        proceedWithError(err)
       }
     }
   }

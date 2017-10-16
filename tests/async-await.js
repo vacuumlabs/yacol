@@ -1,6 +1,7 @@
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
 import {Promise} from 'bluebird'
+import {badRunnableErrorType} from '../dist/constants'
 
 beforeEach(resetTimer)
 
@@ -124,6 +125,38 @@ describe('async-await', () => {
 
     assert.isOk(here1)
     assert.isOk(here2)
+  })
+
+  it('throws proper error when awaited something wrong', async () => {
+    let here = false
+
+    await (async () => {
+      try {
+        await undefined
+      } catch (err) {
+        assert.equal(err.type, badRunnableErrorType)
+        here = true
+      }
+    })()
+    assert.isOk(here)
+  })
+
+  it('throws proper error when awaited something wrong 2', async () => {
+
+    let here = false
+
+    async function f() {
+      await undefined
+    }
+
+    try {
+      await f()
+    } catch (err) {
+      assert.equal(err.type, badRunnableErrorType)
+      here = true
+    }
+
+    assert.isOk(here)
   })
 
 })
