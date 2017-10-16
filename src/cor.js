@@ -57,7 +57,11 @@ const runGenerator = (cor, gen) => {
           handleError(cor, err)
         }).then((res) => {step(res)})
       } else if (isCor(nxt)) {
-        nxt.awaitedByParent = true
+        // child coroutine can be awaited by anyone - only if it is awaited by direct parent, we can
+        // change how error handling works
+        if (nxt.parent === cor) {
+          nxt.awaitedByParent = true
+        }
         onReturn(nxt, (err, ret) => {
           if (err == null) {
             step(ret)

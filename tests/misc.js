@@ -57,4 +57,34 @@ describe('obscure', () => {
     })()
     timeApprox(100)
   })
+
+  it('bugfix: coroutine awaited by its non-parent shouldn\'t change error handling for its parrent', async() => {
+    let child, here1 = false, here2 = false
+
+    const ff = (async function f() {
+      child = (async function g() {
+        await Promise.delay(100)
+        throw new Error('whooops')
+      })()
+    })();
+
+    (async function fakeParent() {
+      try {
+        await Promise.delay(10)
+        await child
+      } catch (err) {
+        here1 = true
+      }
+    })()
+
+    try {
+      await ff
+    } catch (err) {
+      here2 = true
+    }
+
+    assert.isOk(here1)
+    assert.isOk(here2)
+  })
+
 })
