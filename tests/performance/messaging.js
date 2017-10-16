@@ -1,24 +1,23 @@
-import {run, createChannel} from '../../dist'
+import {createChannel} from '../../dist'
 import {getTime} from '../utils'
 
-run(function*() {
+(async function() {
   const startTime = getTime()
-  yield run(function*() {
-    const ch = createChannel()
-    run(function*() {
+  await (async function() {
+    const ch = createChannel();
+    (async () => {
       for (let i = 0; i < 4000; i++) {
         ch.put(i)
-        //yield Promise.resolve()
       }
-    })
-    run(function*() {
+    })();
+    (async function() {
       for (let i = 0; i < 4000; i++) {
-        const msg = yield ch.take()
+        const msg = await ch.take()
         if (msg % 100 === 0) {
           console.log(msg)
         }
       }
-    })
-  })
+    })()
+  })()
   console.log(getTime() - startTime)
-})
+})()
