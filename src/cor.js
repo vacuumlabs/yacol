@@ -61,8 +61,10 @@ const runGenerator = (cor, gen) => {
         // .catch handler must be attached to promise in the current event loop tick. Otherwise, some
         // Promise implementations may complain
         nxt.catch((err) => {
-          handleError(cor, err)
-        }).then((res) => {step(res)})
+          proceedWithError(err)
+        }).then((res) => {
+          step(res)
+        })
       } else if (isCor(nxt)) {
         // child coroutine can be awaited by anyone - only if it is awaited by direct parent, we can
         // change how error handling works
