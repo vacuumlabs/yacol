@@ -2,6 +2,7 @@ Yacol requires babel plugin transform-async-to-module-method to, well, transform
 implementation. To do so:
 
 - `npm install yacol --save` or `yarn add yacol`
+- `npm install babel-plugin-transform-async-to-module-method --save` or `yarn ...`
 - add the following to your .babelrc
 
 {

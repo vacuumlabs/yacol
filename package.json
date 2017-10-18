@@ -25,14 +25,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "babel-plugin-transform-async-to-module-method": "^6.24.1",
-    "on-headers": "^1.0.1",
     "transducers-js": "^0.4.174"
   },
   "devDependencies": {
     "babel-cli": "^6.18.0",
     "babel-core": "^6.17.0",
     "babel-eslint": "^7.0.0",
+    "babel-plugin-transform-async-to-module-method": "^6.24.1",
     "babel-preset-node6": "^11.0.0",
     "babel-preset-stage-0": "^6.16.0",
     "babel-watch": "^2.0.3-rc0",
@@ -42,5 +41,9 @@
     "eslint-plugin-babel": "^3.3.0",
     "eslint-plugin-import": "^2.0.0",
     "mocha": "^3.1.2"
+  },
+  "peerDependencies": {
+    "babel-plugin-transform-async-to-module-method": "6"
   }
+
 }
