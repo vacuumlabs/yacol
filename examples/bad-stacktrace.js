@@ -22,6 +22,7 @@ async function main() {
     await d(1)
   } catch (e) {
     console.error(e)
+
   }
 }
 

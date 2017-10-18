@@ -1,22 +1,17 @@
-async function a(n) {
-  throw new Error('yuck fou')
+async function aaa(n) {
+  throw new Error('whooops')
 }
 
-async function b(n) {
-  const res = await a(n + 1)
+async function bbb(n) {
+  const res = await aaa(n + 1)
   return res
 }
 
-async function c(n) {
-  const res = await b(n + 1)
-  return res
-}
-
-async function d(n) {
-  const res = await c(n + 1)
+async function ccc(n) {
+  const res = await bbb(n + 1)
   return res
 }
 
 (async () => {
-  await d(1)
+  await ccc(1)
 })()
