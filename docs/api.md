@@ -41,7 +41,7 @@ fetch) will continue, but no more computation and no more side-effects will happ
 If you are writing your own version of e.g. fetch, you can use `onKill` handler to terminate the
 ongoing work.
 
-### yacol.alts({key1: coroutine1, key2: coroutine2, ...})
+### yacol.race({key1: coroutine1, key2: coroutine2, ...})
 Returns a coroutine that completes with the value that comes first. Returns `[key, result]`,
 
 ### yacol.prettyErrorLog(error)

@@ -1,6 +1,6 @@
 import {Promise} from 'bluebird'
 import {assert} from 'chai'
-import {alts} from '../dist'
+import {race} from '../dist'
 import {randomInt} from './utils'
 
 async function inc(wait, a, b) {
@@ -8,7 +8,7 @@ async function inc(wait, a, b) {
   return a + b
 }
 
-describe('alts', () => {
+describe('race', () => {
 
   for (let i = 0; i < 5; i++) {
 
@@ -24,7 +24,7 @@ describe('alts', () => {
         sum[j] = a + b
         args[`id-${j}`] = inc(time, a, b)
       }
-      const res = await alts(args)
+      const res = await race(args)
       assert.deepEqual(res, ['id-0', sum[0]])
     })
   }

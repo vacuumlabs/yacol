@@ -60,11 +60,11 @@ const pipeCoroutine = pipe()
 
 Now imagine, you want to stop such pipe. How would you do that? Problem is that the pipe is 'stuck'
 on awaiting current take. Since we don't controll, when the next message arives, we cannot do much
-about it. Luckily, most CSP impementations provide 'alts' function which basically is 'give me the
+about it. Luckily, most CSP impementations provide 'race' function which basically is 'give me the
 first message from any channel there is'. Using this, we can terminate the pipe such as:
 ```
 while(true) {
-  const msg = await alts(producer, killSignalChannel)
+  const msg = await race(producer, killSignalChannel)
   if (msg is kill signal) {
     break
   } else {
