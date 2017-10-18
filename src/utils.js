@@ -130,7 +130,7 @@ function prettyError(e, str = 'ERROR') {
     res.push('')
     res.push(`runnable: ${name}, args: [${args}]`)
     res.push(prettyStacktrace(cor.stacktrace))
-    cor = cor.parent
+    cor = cor.parent || cor.oldParent
   }
 }
 

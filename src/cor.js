@@ -135,6 +135,10 @@ function unLink(child) {
   if (!found) {
     throw new Error('Internal yacol error: inconsistent child-parent tree')
   }
+  // move reference to oldParent so that we a) maintain parent-child references in sync and b) keep
+  // the reference to parent for the purpose of error reporting (the parent coroutines are ended
+  // sooner than the error is being reported)
+  child.oldParent = child.parent
   delete child.parent
 }
 
@@ -233,8 +237,7 @@ export function runWithOptions(options, runnable, ...args) {
     context: myZone,
     generator: null,
     locallyDone: false, // generator has returned
-    configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
-    // .catch, .name, etc are used to populate this object with info customizing the run
+    configLocked: false, // config cannot be modified after the corroutine started
     options: Object.assign({}, options),
     children: new Set(),
     runnable, // runnable, args and stacktrace are for introspection and debug purposes
