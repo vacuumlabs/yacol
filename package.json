@@ -13,12 +13,13 @@
   "scripts": {
     "testq": "mocha --compilers js:babel-core/register tests/*.js",
     "eslint": "eslint .",
-    "test": "npm run eslint && npm run testq",
+    "test": "npm run mock-test && npm run eslint && npm run testq",
     "test-gc": "mocha --compilers js:babel-core/register tests/long-running/**",
     "test-all": "npm run eslint && npm run testq && npm run test-gc",
     "build": "rm -rf dist; babel --out-dir dist src/",
     "build-watch": "rm -rf dist; babel --out-dir dist/ src/ --watch",
     "mock": "rm -rf node_modules/yacol; ln -s ../dist/ node_modules/yacol; rm -rf examples/node_modules/yacol; ln -s ../dist/ examples/node_modules/yacol",
+    "mock-test": "rm -rf node_modules/yacol; ln -s ../dist/ node_modules/yacol",
     "prepublish": "npm run build && npm run test"
   },
   "author": "",
