@@ -11,8 +11,6 @@ but I felt like we should put it on a better cake."
 -- Rich Hickey --
 </div>
 <br />
-<br />
-
 
 - [Install](https://github.com/vacuumlabs/yacol/blob/master/docs/install.md)
 - [API docs](https://github.com/vacuumlabs/yacol/blob/master/docs/api.md)
@@ -24,10 +22,11 @@ Yacol is here to patch behavior of async and await keywords. Typically, your cod
 
 ```javascript
 try {
-  await asyncFunctionIHaveNoTimeToReviewAffraidOfAsyncErrors()
+  await asyncFunctionIHaveNoTimeToReviewSoImAffraidOfAsyncErrors()
 } catch (err) {
   // yup, all the errors will go here. Even those from not awaited asynchronous functions.
 }
+```
 
 Yop, it's that easy. Full example:
 
@@ -57,19 +56,24 @@ This is, how kill works:
 ```javascript
 import {Promise} from 'bluebird'
 
-async function blockForever() {
-  await Promise.delay(10000) // feels like forever
-  console.log('this will never be printed, see below why')
+async function test() {
+  const time = 2500 // feels like forever
+  await Promise.delay(time)
+  console.log('this will print if time < 1000')
 }
 
-async function main() {
-  blockForever() // start async function, but don't wait for it
-  await Promise.delay(1000)
-  kill(blockForever)
+async function runTestForAtMost1Sec() {
+  const testCor = test(); // start async function, but don't wait for it
+  (async () => { // start second coroutine with purpose only to kill the first one after given timeout
+    await Promise.delay(1000)
+    kill(testCor)
+  })()
 }
 ```
 
-You can use context:
+Context is namespace, which can be read and write by parent coroutine and read by child coroutines.
+It's similar to node.js (deprecated) domains or Dart zones. You can use it as simple as:
+
 ```javascript
 import {context} from 'yacol'
 

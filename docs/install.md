@@ -5,6 +5,7 @@ implementation. To do so:
 - `npm install babel-plugin-transform-async-to-module-method --save` or `yarn ...`
 - add the following to your .babelrc
 
+```javascript
 {
   "plugins": [
       ["transform-async-to-module-method", {
@@ -13,6 +14,7 @@ implementation. To do so:
       }]
   ]
 }
+```
 
 - If you're not doing it so, don't forget to run your code with `babel-node`.
 - Happy hacking!

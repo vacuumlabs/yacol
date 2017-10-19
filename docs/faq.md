@@ -6,8 +6,8 @@ A: Yes, but you shouldn't. Check out .detached() for this.
 
 Q: Can I mix standart Promises and Coroutines together?
 
-A: Easily. Coroutine impements .then and .catch methods. Also, you can await plain Promises in async
-methods. However, note that .then and .catch methods returns Promises and you lose Coroutine guarantees.
+A: Easily. Coroutine impements `.then` and `.catch` methods. Also, you can await plain Promises in async
+methods. However, note that `.then` and `.catch` methods return new Promises and you lose Coroutine guarantees.
 
 Q: If I schedule something for the next event loop (`setTimeout`) or create some separate Promise
 chain, will this play nice with yacol's error-handling, coroutine termination, pretty stacktraces,
@@ -15,7 +15,7 @@ etc?
 
 A: Sorry, no. Simply don't use `setTimeout`. Instead of
 
-```
+```javascript
 setTimeout(() => {
   doThisLittleBitLater()
 }, 10)
@@ -23,19 +23,20 @@ setTimeout(() => {
 
 do:
 
+```javascript
 (async () => {
   await Promise.delay(10)
   doThisLittleBitLater()
 })()
-
+```
 
 Also, normally you shouldn't convert Coroutines to Promises. Use Promises and promisified callbacks to integrate with 3rd
 party APIs. Once 'on ramp', work with coroutines only.
 
-Q: I've noticed you are using async functions with mocha. Since async funtions now returns
+Q: I've noticed you are using async functions with Mocha. Since async funtions now returns
 Coroutines instead of Promises, how does this work? Don't you have to do some ugly Mocha-patching?
 
-A: Since Coroutine is .then able and .catch able, all Promise-expecting libraries I've tried are OK with
+A: Since Coroutine is `.then` able and `.catch` able, all Promise-expecting libraries I've tried are OK with
 Coroutines.
 
 Q: I've noticed something about yacol providing custom CSP implementation (channels with blocking
@@ -79,6 +80,4 @@ pipe! It's as simple as:
 kill(pipeCoroutine)
 ```
 this will work, because, .take() is just another coroutine which knows how to terminate itself.
-It's beautiful and clean. Another problem
-
-And it justifies, why all these aspects are put to a single library.
+It's beautiful and clean, however it needs for channel.take() to integrate more deeply with the coroutine mechanism.
