@@ -1,64 +1,46 @@
 import express from 'express'
-import {expressHelpers, run, context} from 'yacol'
 import Promise from 'bluebird'
 
-const {register, runApp} = expressHelpers
 const app = express()
 
-function* hello(req, res) {
-  yield Promise.delay('500')
-  res.send('hello')
+async function hello(req, res) {
+  await Promise.delay('100')
+  res.send('hello!')
 }
 
-function* helloContext(req, res) {
-  res.send(context.get('hello'))
+async function error(req, res) {
+  await Promise.delay('100')
+  throw new Error('whoops')
 }
 
-function* world(req, res) {
-  yield Promise.delay(1000)
-  res.send('world')
+function catchErrorMiddleware(handler) {
+  return async (req, res) => {
+    try {
+      await handler(req, res)
+    } catch (err) {
+      res.status(500)
+      res.send('Something is broken!')
+    }
+  }
 }
 
-function* greetingMiddleware(req, res, next) {
-  console.log('Howdy, I\'m greeting middleware')
-  context.set('hello', 'hi from context')
-  yield run(next)
+function greetingMiddleware(handler) {
+  return async (req, res) => {
+    console.log('howdy before request handle')
+    await handler(req, res)
+    console.log('hello after request handle')
+  }
 }
 
-function* worldMiddleware1(req, res, next) {
-  console.log('middleware 1 before')
-  yield Promise.delay(3000)
-  yield run(next)
-  console.log('middleware 1 after')
-  yield Promise.delay(3000)
+function generalApiMiddleware(handler) {
+  return catchErrorMiddleware(greetingMiddleware(handler))
 }
 
-function* worldMiddleware2(req, res, next) {
-  console.log('middleware 2 before')
-  yield Promise.delay(3000)
-  yield run(next)
-  console.log('middleware 2 after')
-  yield Promise.delay(3000)
-}
+app.get('/hello', generalApiMiddleware(hello))
+app.get('/error', catchErrorMiddleware(error))
 
-function* crashMiddleware(req, res, next) {
-  throw new Error('uh oh')
-}
 
-register(app, 'use', '*', greetingMiddleware)
-
-register(app, 'get', '/hello', hello)
-register(app, 'get', '/context', helloContext)
-
-register(app, 'use', '/world', worldMiddleware1)
-register(app, 'use', '/world', worldMiddleware2)
-register(app, 'get', '/world', world)
-register(app, 'use', '/crash', crashMiddleware)
-
-run(function* () {
-  run(runApp)
-  app.listen(3000, () => {
-    console.log('server started. Navigate to localhost:3000/hello, ' +
-      'localhost:3000/world, or localhost:3000/context to see something')
-  })
+app.listen(3000, () => {
+  console.log('server started. Navigate to localhost:3000/hello, ' +
+    'localhost:3000/world, or localhost:3000/context to see something')
 })

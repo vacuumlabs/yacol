@@ -1,236 +1,290 @@
-import {run, kill} from '../dist'
+import {kill} from '../dist'
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
 import {isTerminatedError} from '../dist/utils'
+import {assertCorType} from '../dist/constants'
 import Promise from 'bluebird'
 
 beforeEach(resetTimer)
 
 describe('kill', () => {
 
-  it('can kill', (done) => {
-    run(function*() {
-      let c1, c2, c12, c123, c22, c223, here1 = false, here2 = false //eslint-disable-line no-unused-vars
-      c1 = run(function*() {
-        c12 = run(function*() {
-          c123 = run(function*() {
-            yield Promise.delay(300)
-            here1 = true
-          })
-        })
-      })
-      c2 = run(function*() {
-        c22 = run(function*() {
-          c223 = run(function*() {
-            yield Promise.delay(300)
-            here2 = true
-          })
-        })
-      })
-      run(function*() {
-        yield Promise.delay(200)
-        kill(c12)
-        kill(c223)
-      })
-      yield c1
-      yield c2
-      timeApprox(200)
-      yield Promise.delay(200)
-      assert.isNotOk(here1)
-      assert.isNotOk(here2)
-      done()
-    })
-  })
+  it('can kill', async () => {
 
-  it('children of errored coroutine are terminated', (done) => {
-    let here = false, c
-    run(function*() {
-      run(function*() {
-        c = run(function*() {
-          yield Promise.delay(10)
-          here = true
-        })
-        throw new Error('yuck fou')
-      }).catch((e) => {})
-      yield Promise.delay(50)
-      assert.isNotOk(here)
-      run(function*() {
-        yield c
-      }).catch((e) => {
-        assert.isOk(isTerminatedError(e))
-        done()
-      })
-    })
-  })
+    let here1 = false, here2 = false, here3 = false
 
-  it('killing not awaited coroutine does not propagate error', (done) => {
-    let here1 = false
-    run(function*() {
-      const c = run(function*() {
-        yield Promise.delay(200)
-      })
-      yield Promise.delay(50)
-      kill(c)
-      yield Promise.delay(50)
-      assert.isNotOk(here1)
-      done()
-    }).catch((e) => {
+    async function job() {
       here1 = true
-    })
-  })
+      await Promise.delay(100)
+      here2 = true
+    }
 
-  it('killing coroutine can use second argument to determine return value', (done) => {
-    run(function*() {
-      const c = run(function*() {
-        yield Promise.delay(200)
-      })
-      run(function*() {
-        yield Promise.delay(50)
-        kill(c, 42)
-      })
-      const res = yield c
-      assert.equal(res, 42)
-      done()
-    })
-  })
+    const jobCoroutine = job();
 
-  it('killing coroutine uses catch handler to determine return value', (done) => {
-    run(function*() {
-      const c = run(function*() {
-        yield Promise.delay(200)
-      }).catch((e) => 42)
-      run(function*() {
-        yield Promise.delay(50)
-        kill(c)
-      })
-      const res = yield c
-      assert.equal(res, 42)
-      done()
-    })
-  })
-
-  it('If error handler throws, the error is propagated in a standard way', (done) => {
-    run(function*() {
-      const c = run(function*() {
-        yield Promise.delay(200)
-      }).catch((e) => {throw new Error('yuck fou')})
-      run(function*() {
-        yield Promise.delay(50)
-        kill(c)
-      })
-    }).catch((e) => {
-      assert.equal(e.message, 'yuck fou')
-      done()
-    })
-  })
-
-  it('Child coroutines are terminated with correct states', (done) => {
-    let here3 = false, here4 = false
-    run(function*() {
-      let c2, c3, c4
-      const c = run(function*() {
-        c2 = run(function*() {
-          yield Promise.delay(200)
-        }).catch((e) => 42)
-        c3 = run(function*() {
-          yield Promise.delay(200)
-        })
-        c4 = run(function*() {
-          yield Promise.delay(200)
-        }).catch((e) => {throw new Error('yuck fou')})
-      })
-      run(function*() {
-        yield Promise.delay(50)
-        kill(c)
-      })
-      yield Promise.delay(50)
-      const res2 = yield c2
-      assert.equal(res2, 42)
-      run(function*() {
-        yield c3
-      }).catch((e) => {
-        assert.isOk(isTerminatedError(e))
+    (async function() {
+      try {
+        const val = await jobCoroutine // eslint-disable-line no-unused-vars
+      } catch (err) {
         here3 = true
-      })
-      run(function*() {
-        yield c4
-      }).catch((e) => {
-        assert.equal(e.message, 'yuck fou')
-        here4 = true
-      })
-      setTimeout(() => {
-        assert.isOk(here3)
-        assert.isOk(here4)
-        done()
-      }, 20)
-    })
+        assert.isOk(isTerminatedError(err))
+      }
+    })()
+
+    await Promise.delay(50)
+    kill(jobCoroutine)
+    await Promise.delay(150)
+    assert.isOk(here1)
+    assert.isNotOk(here2)
+    assert.isOk(here3)
+    timeApprox(200)
   })
 
-  it('killing succesfully terminated coroutine does nothing', (done) => {
-    run(function*() {
-      const c = run(function*() {
-        yield Promise.delay(100)
-        return 42
-      })
-      yield Promise.delay(200)
-      kill(c)
-      const res = yield c
-      assert.equal(res, 42)
-      done()
-    })
+  it('killing multiple times does nothing', async () => {
+
+    let here1 = false, here2 = false, here3 = false
+
+    async function job() {
+      here1 = true
+      await Promise.delay(100)
+      here2 = true
+    }
+
+    const jobCoroutine = job();
+
+    (async function() {
+      try {
+        const val = await jobCoroutine // eslint-disable-line no-unused-vars
+      } catch (err) {
+        here3 = true
+        assert.isOk(isTerminatedError(err))
+      }
+    })()
+
+    await Promise.delay(50)
+    kill(jobCoroutine)
+    kill(jobCoroutine)
+    kill(jobCoroutine)
+    kill(jobCoroutine)
+    await Promise.delay(150)
+    assert.isOk(here1)
+    assert.isNotOk(here2)
+    assert.isOk(here3)
+    timeApprox(200)
+
   })
 
-  it('killing errored and catched coroutine does nothing', (done) => {
-    run(function*() {
-      const c = run(function*() {
-        yield Promise.delay(100)
-        throw new Error('yuck fou')
-      }).catch((e) => 42)
-      yield Promise.delay(200)
-      kill(c)
-      const res = yield c
-      assert.equal(res, 42)
-      done()
-    })
+
+  it('children of killed coroutine are also killed', async () => {
+
+    let here1 = false, here2 = false, here3 = false
+
+    async function sideJob() {
+      here1 = true
+      await Promise.delay(100)
+      here2 = true
+    }
+
+    let sideJobCoroutine
+
+    async function job() {
+      sideJobCoroutine = sideJob()
+    }
+
+    const jobCoroutine = job()
+    await Promise.delay(50)
+    kill(jobCoroutine)
+    await Promise.delay(100)
+
+    try {
+      await sideJobCoroutine
+    } catch (err) {
+      here3 = true
+    }
+
+    assert.isOk(here1)
+    assert.isNotOk(here2)
+    assert.isOk(here3)
+
   })
 
-  it('killing errored coroutine does not invoked catch handler second time', (done) => {
-    run(function*() {
-      let c2
-      let caught = 0
-      const c1 = run(function*() {
-        c2 = run(function*() {
-          yield Promise.delay(100)
-          throw new Error('yuck fou')
-        }).catch((e) => {caught++; throw e})
-      }).catch((e) => 42)
-      yield Promise.delay(200)
-      assert.equal(caught, 1)
-      kill(c2)
-      const res = yield c1
-      assert.equal(res, 42)
-      assert.equal(caught, 1)
-      done()
-    })
+  it('children of errored coroutine are also killed - explicit error', async () => {
+
+    let here1 = false, here2 = false, here3 = false
+
+    async function sideJob() {
+      here1 = true
+      await Promise.delay(100)
+      here2 = true
+    }
+
+    async function job() {
+      sideJob()
+      await Promise.delay(50)
+      throw new Error('whoops')
+    }
+
+    try {
+      await job()
+    } catch (err) {
+      here3 = true
+    }
+
+    await Promise.delay(150)
+
+    assert.isOk(here1)
+    assert.isNotOk(here2)
+    assert.isOk(here3)
   })
 
-  it('invokes onKill handler', (done) => {
+  it('children of errored coroutine are also killed - failed sibling job', async () => {
+
+    let here1 = false, here2 = false, here3 = false
+
+    async function sideJob() {
+      here1 = true
+      await Promise.delay(100)
+      here2 = true
+    }
+
+    async function errorSideJob() {
+      await Promise.delay(50)
+      throw new Error('whooops')
+    }
+
+    async function job() {
+      sideJob()
+      errorSideJob()
+    }
+
+    try {
+      await job()
+    } catch (err) {
+      here3 = true
+    }
+
+    await Promise.delay(150)
+
+    assert.isOk(here1)
+    assert.isNotOk(here2)
+    assert.isOk(here3)
+  })
+
+
+  it('killing not awaited coroutine does not propagate error', async () => {
+
     let here1 = false, here2 = false
-    run(function*() {
-      const cor = run(function*() {
-        run(function*() {
-          yield Promise.delay(10000)
-        }).onKill(() => {here2 = true})
-        yield Promise.delay(10000)
-      }).onKill(() => {here1 = true})
-      run(function*() {
-        yield Promise.delay(100)
-        kill(cor)
-        assert.isOk(here1)
-        assert.isOk(here2)
-        done()
-      })
+
+    async function job() {
+      await Promise.delay(1000)
+    }
+
+    try {
+      const jobCoroutine = job()
+      kill(jobCoroutine)
+      here1 = true
+    } catch (err) {
+      here2 = true
+    }
+    assert.isOk(here1)
+    assert.isNotOk(here2)
+  })
+
+  it('can use argument to determine return value', async () => {
+
+    async function job() {
+      await Promise.delay(200)
+    }
+
+    const jobCoroutine = job()
+    kill(jobCoroutine, 42)
+    const res = await jobCoroutine
+    assert.equal(res, 42)
+  })
+
+  it('killing succesfully terminated coroutine does nothing', async () => {
+
+    async function job() {
+      await Promise.delay(1)
+      return 4
+    }
+
+    const jobCoroutine = job()
+    await Promise.delay(20)
+    kill(jobCoroutine)
+    const res = await jobCoroutine
+    assert.equal(res, 4)
+  })
+
+  it('killing errored coroutine does nothing', async () => {
+
+    let here1 = false, here2 = false
+
+    async function job() {
+      await Promise.delay(1)
+      throw new Error('whooops')
+    }
+
+    const jobCoroutine = job()
+
+    try {
+      await jobCoroutine
+    } catch (err) {
+      here1 = true
+    }
+
+    kill(jobCoroutine)
+
+    try {
+      await jobCoroutine
+    } catch (err) {
+      assert.equal(err.message, 'whooops')
+      here2 = true
+    }
+
+    assert.isOk(here1)
+    assert.isOk(here2)
+  })
+
+  it('invokes onKill handler', async () => {
+
+    let here = false
+
+    async function job() {
+      await Promise.delay(100)
+    }
+
+    const jobCoroutine = job()
+    jobCoroutine.onKill(() => {here = true})
+    kill(jobCoroutine)
+
+    assert.isOk(here)
+  })
+
+  it('kill validates its first argument', async () => {
+    let here = false
+    try {
+      kill(Promise.delay(10))
+    } catch (err) {
+      assert.equal(err.type, assertCorType)
+      here = true
+    }
+    assert.isOk(here)
+  })
+
+  it('killed coroutine acts as a failed promise', async () => {
+    let here = false
+    async function job() {
+      await Promise.delay(10000)
+    }
+    const jobCor = job()
+    kill(jobCor)
+    await Promise.delay(10)
+    jobCor.catch((err) => {
+      isTerminatedError(err)
+      here = true
     })
+    await Promise.delay(10)
+    assert.isOk(here)
   })
 
 })

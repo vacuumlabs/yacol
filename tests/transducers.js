@@ -1,23 +1,23 @@
-import {run, createChannel} from '../dist'
+import {createChannel} from '../dist'
 import Promise from 'bluebird'
 import {assert} from 'chai'
 import t from 'transducers-js'
 
 describe('transducers', () => {
-  it('basic functionality', () => run(function*() {
+  it('basic functionality', async () => {
     const xf = t.comp(t.filter((x) => x % 2 === 0), t.map((x) => x * 2))
-    const ch = createChannel(xf)
-    run(function*() {
+    const ch = createChannel(xf);
+    (async function() {
       for (let i = 0; i < 10; i++) {
         ch.put(i)
-        yield Promise.delay(10)
+        await Promise.delay(10)
       }
-    })
-    run(function*() {
+    })();
+    (async function() {
       for (let i = 0; i < 5; i++) {
-        const msg = yield ch.take()
+        const msg = await ch.take()
         assert.equal(msg, i * 4)
       }
-    })
-  }))
+    })()
+  })
 })

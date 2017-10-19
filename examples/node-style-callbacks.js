@@ -1,11 +1,12 @@
-import Promise from 'bluebird'
-import {run, runc} from 'yacol'
+import {promisify} from 'bluebird'
 import fs from 'fs'
 
-run(function*() {
+async function main() {
   const filename = './__delete__me__'
-  yield runc(fs.writeFile, filename, 'much data')
-  const res = yield runc(fs.readFile, filename)
-  yield runc(fs.unlink, filename)
+  await promisify(fs.writeFile)(filename, 'much data')
+  const res = await promisify(fs.readFile)(filename)
+  await promisify(fs.unlink)(filename)
   console.log(res.toString('utf-8'))
-})
+}
+
+main()

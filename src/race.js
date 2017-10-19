@@ -1,8 +1,8 @@
-import {onReturn} from './cor'
+import {run, onReturn} from './cor'
 import {createChannel} from './messaging'
 import {assertCor} from './utils'
 
-export const alts = function*(args) {
+export const race = (args) => run(function*() {
   const channel = createChannel()
   for (let key in args) {
     assertCor(args[key])
@@ -20,4 +20,4 @@ export const alts = function*(args) {
   } else {
     return res.result
   }
-}
+})

@@ -1,9 +1,3 @@
-Fire `npm install` and then run example such as:
-
-```
-npm run start slowSum.js
-```
-
-This starts `slowSum` example with locally installed version of babel-node. If you are using
-`babel-node` globally, you can run `babel-node slowSum.js` directly.
-
+Clone the repo, `cd` to `examples` directory and run `npm install` (it is the standalone npm
+package). use `npm run start examplename.js` to execute the example with the local version of
+babel-node

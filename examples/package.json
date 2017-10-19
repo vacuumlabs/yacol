@@ -1,6 +1,6 @@
 {
   "name": "examples",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "scripts": {
     "start": "babel-node"
@@ -11,9 +11,10 @@
     "babel-cli": "^6.18.0",
     "babel-core": "^6.17.0",
     "babel-eslint": "^7.0.0",
+    "babel-plugin-transform-async-to-module-method": "^6.24.1",
     "babel-preset-node6": "^11.0.0",
     "babel-preset-stage-0": "^6.16.0",
-    "babel-watch": "^2.0.3-rc0",
+    "babel-watch": "^2.0.7",
     "bluebird": "^3.4.6",
     "chai": "^3.5.0",
     "eslint": "^3.7.0",
@@ -21,7 +22,7 @@
     "eslint-plugin-import": "^2.0.0",
     "express": "^4.14.0",
     "mocha": "^3.1.2",
-    "yacol": "0.7.0"
+    "yacol": "1.0.0"
   },
   "engines": {
     "node": ">=6.2.0"

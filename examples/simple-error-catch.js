@@ -1,8 +1,14 @@
-import {run} from 'yacol'
-
-function* crash() {
+async function crash() {
   throw new Error('crash')
 }
 
-run(crash).catch((e) => {console.log('gotcha')}) // catches the error
 
+async function main() {
+  try {
+    await crash()
+  } catch (e) {
+    console.log('gotcha')
+  }
+}
+
+main()

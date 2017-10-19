@@ -1,4 +1,4 @@
-import {run, runWithParent, runDetached, context} from '../dist'
+import {context} from '../dist'
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
 import Promise from 'bluebird'
@@ -7,35 +7,74 @@ beforeEach(resetTimer)
 
 describe('with-parent', () => {
 
-  it('basics', () => run(function*() {
-    const c1 = run(function*() {
+  it('context works', async () => {
+    const c1 = (async () => {
       context.set('hello', 'world')
-      yield Promise.delay(100)
-    })
+    })()
 
-    runWithParent(c1, function*() {
+    await Promise.delay(10)
+
+    await (async function() {
       assert.equal(context.get('hello'), 'world')
-      yield Promise.delay(200)
-    })
+    })().withParent(c1)
 
-    yield c1
+  })
 
-    timeApprox(200)
-  }))
+  it('blocks parent', async () => {
 
-  it('detached', () => run(function*() {
-    const c1 = run(function*() {
-      context.set('hello', 'world')
+    await (async () => {
 
-      runDetached(function*() {
-        assert.equal(context.get('hello'), undefined)
-        yield Promise.delay(100000)
-      })
+      const c = (async () => {
+        await Promise.delay(1)
+      })();
 
-      yield Promise.delay(200)
-    })
-    yield c1
-    timeApprox(200)
-  }))
+      (async function() {
+        await Promise.delay(100)
+      })().withParent(c)
 
+      await c
+      timeApprox(100)
+    })()
+
+  })
+
+  it('errors parent', async () => {
+
+    let here = false
+
+    await (async () => {
+
+      const c = (async () => {
+        await Promise.delay(100)
+      })();
+
+      (async function() {
+        await Promise.delay(10)
+        throw new Error('whooops')
+      })().withParent(c)
+
+      try {
+        await c
+      } catch (err) {
+        here = true
+      }
+    })()
+
+    assert.isOk(here)
+
+  })
+
+  it('detached', async () => {
+    context.set('hello', 'world');
+
+    (async () => {
+      assert.equal(context.get('hello'), undefined)
+    })().detached();
+
+    (async () => {
+      await Promise.delay(100000)
+    })().detached()
+
+    timeApprox(0)
+  })
 })

@@ -1,107 +1,35 @@
-import {pidString, corType, terminatedErrorType, runcBadCbArgs} from './constants'
-import {createChannel} from './messaging'
+import {pidString, corType, terminatedErrorType, badRunnableErrorType} from './constants'
 import {isCor, assertCor, prettyErrorLog} from './utils'
 
 let idSeq = 0
 
-const runPromise = (cor, promise) => {
-  if (cor.options.inspectMode) {
-    cor.effects.put({promise})
-    return
-  }
-  promise.then((res) => {
-    setDone(cor, {returnValue: res})
-  }).catch((err) => {
-    handleError(cor, err)
-  })
-}
-
-const runNodeCbAcceptingFn = (cor, runnable, args) => {
-  const promise = new Promise((resolve, reject) => {
-    runnable(...args, (...cbargs) => {
-
-      let err, res, errMsg
-
-      if (cbargs.length > 2) {
-        errMsg = 'the callback was executed with wrong number of arguments. ' +
-          'Node style callbacks support 0, 1 or 2 arguments.'
-        console.error(errMsg, '\nProvided arguments:', cbargs)
-      } else {
-        [err, res] = cbargs
-        if (err != null && res != null) {
-          errMsg = 'the callback was executed with two arguments that != null, this should not happen!'
-          console.error(errMsg, '\nProvided arguments:', cbargs)
-        } else if (err != null && !(err instanceof Error)) {
-          errMsg = 'the callback was executed with one arguments, but it doesn\'t look like error!'
-          console.error(errMsg, '\nProvided argument:', err)
-        } else if (err == null) {
-          resolve(res)
-        } else {
-          reject(err)
-        }
-      }
-      if (errMsg != null) {
-        err = new Error(errMsg)
-        err.type = runcBadCbArgs
-        reject(err)
-      }
-    })
-  })
-  runPromise(cor, promise)
-}
-
 function handleError(cor, err) {
-
-  // cor may already be ended for various reasons. In such a case, do nothing
-  if (isDone(cor)) {
-    return
-  }
-
   // for logging purposes it's handy to remember, at what cor the error happened. However,
   // attaching this directly to err.cor would spam the console
   if (!('cor' in err)) {
     Object.defineProperty(err, 'cor', {value: cor})
   }
 
-  function _handleError(cor, err) {
-    if (isDone(cor)) {return}
-    const options = {}
-    let handler = cor.options.onError
-    let processed
-    if (handler != null) {
-      try {
-        options.returnValue = handler(err)
-        processed = true
-      } catch (errorCaught) {
-        err = errorCaught
-        options.error = err
-        processed = false
-      }
-    } else {
-      options.error = err
-      processed = false
-    }
-    setDone(cor, options)
-    for (let child of cor.children) {
-      kill(child)
-    }
-    if (!processed) {
-      if (cor.parent == null) {
-        prettyErrorLog(err, 'UNHANDLED ERROR')
-      } else {
-        _handleError(cor.parent, err)
-      }
-    }
+  if (isDone(cor)) {return}
+
+  setDone(cor, {error: err})
+
+  for (let child of cor.children) {
+    kill(child)
   }
 
-  _handleError(cor, err)
+  if (err !== terminatedError) {
+    if (cor.parent) {
+      if (!cor.awaitedByParent) {
+        handleError(cor.parent, err)
+      }
+    } else {
+      prettyErrorLog(err, 'UNHANDLED ERROR')
+    }
+  }
 }
 
 const runGenerator = (cor, gen) => {
-
-  if (cor.options.inspectMode) {
-    cor.step = step
-  }
 
   function withPid(what) {
     let oldPid = global[pidString]
@@ -110,73 +38,69 @@ const runGenerator = (cor, gen) => {
     global[pidString] = oldPid
   }
 
+  function proceedWithError(err) {
+    try {
+      const nxtNxt = gen.throw(err)
+      processNxt(nxtNxt)
+    } catch (nxtErr) {
+      handleError(cor, err)
+    }
+  }
+
+  function processNxt(nxt) {
+    if (nxt.done) {
+      if (cor.locallyDone) {
+        throw new Error('yacol internal error: myZone.done was already set to true')
+      }
+      cor.returnValuePending = nxt.value
+      cor.locallyDone = true
+      tryEnd(cor)
+    } else {
+      nxt = nxt.value
+      if (looksLikePromise(nxt)) {
+        // .catch handler must be attached to promise in the current event loop tick. Otherwise, some
+        // Promise implementations may complain
+        nxt.catch((err) => {
+          proceedWithError(err)
+        }).then((res) => {
+          step(res)
+        })
+      } else if (isCor(nxt)) {
+        // child coroutine can be awaited by anyone - only if it is awaited by direct parent, we can
+        // change how error handling works
+        if (nxt.parent === cor) {
+          nxt.awaitedByParent = true
+        }
+        onReturn(nxt, (err, ret) => {
+          if (err == null) {
+            step(ret)
+          } else {
+            proceedWithError(err)
+          }
+        })
+      } else {
+        const err = new Error(`Awaited object does not look like Coroutine or Promise (typeof: ${typeof nxt})`)
+        err.type = badRunnableErrorType
+        proceedWithError(err)
+      }
+    }
+  }
+
   function step(val) {
     if (isDone(cor)) {return}
     withPid(() => {
-      let nxt
       try {
+        let nxt
         nxt = gen.next(val)
-        if (cor.options.inspectMode) {
-          if (nxt.done) {
-            cor.effects.put({returnValue: nxt.value, done: true})
-            return
-          } else if (isCor(nxt.value)) {
-            cor.effects.put({
-              runnable: nxt.value.runnable,
-              args: nxt.value.args,
-            })
-            return
-          } else if (looksLikePromise(nxt.value)) {
-            cor.effects.put({promise: nxt.value})
-          }
-        }
+        processNxt(nxt)
       } catch (err) {
-        if (cor.options.inspectMode) {
-          cor.effects.put({error: err, done: true})
-          return
-        }
         handleError(cor, err)
-      }
-      if (nxt != null) {
-        if (nxt.done) {
-          if (cor.locallyDone) {
-            throw new Error('myZone.done was already set to true')
-          }
-          cor.returnValuePending = nxt.value
-          cor.locallyDone = true
-          tryEnd(cor)
-        } else {
-          nxt = nxt.value
-          if (looksLikePromise(nxt)) {
-            // We're repeating the logic from `runPromise` here. It would be nice just to `run` the
-            // promise and cor it standard way, however, there is a bluebird-related problem with
-            // such implementation: this way `runPromise` will start only in the next event loop and if the
-            // (rejected) Promise does not have its error handler attached by that time, Bluebird will
-            // mistakenly treat the error as unhandled
-            nxt.catch((err) => {
-              handleError(cor, err)
-            }).then((res) => {step(res)})
-          } else {
-            let childHandle
-            if (isCor(nxt)) {
-              childHandle = nxt
-            } else {
-              childHandle = run(nxt)
-            }
-            onReturn(childHandle, (err, ret) => {
-              if (err == null) {
-                step(ret)
-              } else {
-                handleError(cor, err)
-              }
-            })
-          }
-        }
+        return
       }
     })
   }
-  // from the moment user calls run() we've already waited for the next event-loop to get here. At
-  // this point, we can start execution immediately.
+  // from the moment user calls run() we've already waited for the next event-loop cycle to get here. At
+  // this point, the we can start execution immediately.
   step()
 }
 
@@ -211,24 +135,15 @@ function unLink(child) {
   if (!found) {
     throw new Error('Internal yacol error: inconsistent child-parent tree')
   }
+  // move reference to oldParent so that we a) maintain parent-child references in sync and b) keep
+  // the reference to parent for the purpose of error reporting (the parent coroutines are ended
+  // sooner than the error is being reported)
+  child.oldParent = child.parent
   delete child.parent
 }
 
 function isDone(corr) {
   return (('returnValue' in corr) || ('error' in corr))
-}
-
-function resolvePatched(cor, runnable) {
-  while (true) {
-    if (cor.patchData != null && cor.patchData.has(runnable)) {
-      return cor.patchData.get(runnable)
-    }
-    cor = cor.parent
-    if (cor == null) {
-      break
-    }
-  }
-  return runnable
 }
 
 // see documentation
@@ -238,30 +153,37 @@ export function run(runnable, ...args) {
 
 export function coroutine(fn) {
   return function(...args) {
-    return run(fn, ...args)
+    const res = run(fn, ...args)
+    res.fn = fn
+    return res
   }
 }
 
-/* `parent` is used as a parent for the newly created coroutine. This creates other-than-default
- * coroutine hierarchy and should be used with care */
-export function runWithParent(parent, runnable, ...args) {
-  return runWithOptions({parent}, runnable, ...args)
-}
-
-/* runs coroutine as a top-level one, i.e. the parent is null instead of currently running coroutine
- * */
-export function runDetached(runnable, ...args) {
-  return runWithOptions({parent: null}, runnable, ...args)
-}
-
-export function runc(runnable, ...args) {
-  return runWithOptions({nsc: true}, runnable, ...args)
-}
-
-// perf tweaking: does not wait for the next event loop. All options should be availbale
-// so let's start executing.
-export function runImmediately(options, runnable, ...args) {
-  return runWithOptions({...options, immediately: true}, runnable, ...args)
+// this causes:
+// - parent is listed as child's parent
+// - child is listed amongst parent children
+// - correctly handles parent == null case
+// - correctly handles the case where child.parent is already being set to some coroutine. This is
+//   important when changing parent from the 'lexical' parent to the one specified in options
+function ensureParentChildRelationship(parent, child) {
+  // parent === null means, we are detaching the coroutine. We still want to unlink the previous
+  // parent though
+  if (parent === undefined) {
+    return
+  }
+  if (child.parent != null) {
+    const oldParent = child.parent
+    unLink(child)
+    tryEnd(oldParent)
+    child.onReturnHandle.dispose()
+  }
+  if (parent != null) {
+    makeLink(child, parent)
+    child.onReturnHandle = onReturn(child, (err, res) => {
+      unLink(child)
+      tryEnd(parent)
+    })
+  }
 }
 
 // creates coroutine cor, and collects all the options which can be specified via .then, .catch,
@@ -270,8 +192,6 @@ export function runImmediately(options, runnable, ...args) {
 export function runWithOptions(options, runnable, ...args) {
 
   let id = `${idSeq++}`
-  const parentCor = 'parent' in options ? options.parent : global[pidString]
-
   let myZone = {
     public: new Map(),
     // cor: to be specified later
@@ -288,7 +208,7 @@ export function runWithOptions(options, runnable, ...args) {
     return cor
   }
 
-  function then(fn) {
+  function toPromise() {
     return new Promise((resolve, reject) => {
       onReturn(
         cor,
@@ -299,40 +219,25 @@ export function runWithOptions(options, runnable, ...args) {
             reject(err)
           }
         })
-    }).then(fn)
+    })
   }
 
-  function inspect() {
-    addToOptions('inspectMode', true)
-    cor.effects = createChannel()
-    cor.takeEffect = () => cor.effects.take()
-    return cor
+  function then(fn) {
+    return toPromise().then(fn)
   }
 
-  function patch(...args) {
-    if (cor.patchData != null) {
-      handleError(cor, new Error('patch: For your safety, you cannot patch single coroutine more than once'))
-    }
-    cor.patchData = new Map()
-    for (let arg of args) {
-      if (!(Array.isArray(arg) && arg.length === 2)) {
-        handleError(cor, new Error('patch: all arguments of patch must be arrays of size 2'))
-      }
-      if (cor.patchData.has(arg)) {
-        handleError(cor, new Error('patch: For your safety, you cannot patch single runnable more than once'))
-      }
-      cor.patchData.set(arg[0], arg[1])
-    }
-    return cor
+  function _catch(fn) {
+    return toPromise().catch(fn)
   }
 
+  // the coroutine type
   const cor = {
     type: corType,
     id,
     context: myZone,
+    generator: null,
     locallyDone: false, // generator has returned
-    configLocked: false, // .catch shouldn't be able to modify config after the corroutine started
-    // .catch, .inspect, etc are used to populate this object with info customizing the run
+    configLocked: false, // config cannot be modified after the corroutine started
     options: Object.assign({}, options),
     children: new Set(),
     runnable, // runnable, args and stacktrace are for introspection and debug purposes
@@ -340,15 +245,15 @@ export function runWithOptions(options, runnable, ...args) {
     stacktrace: getStacktrace(),
     returnListeners: new Set(),
     then,
-    catch: (errorHandler) => addToOptions('onError', errorHandler),
-    patch,
-    inspect,
+    catch: _catch,
+    /* `parent` is used as a parent for the newly created coroutine. This creates other-than-default
+     * coroutine hierarchy and should be used with care */
+    withParent: (parent) => addToOptions('parent', parent),
+    detached: () => addToOptions('parent', null),
+    name: (name) => addToOptions('name', name),
+    getName: () => cor.options.name,
     onKill: (fn) => addToOptions('onKill', fn),
     /*
-     * in inspect mode:
-     *   `step`: step function
-     *   `effects`: channel for pushing the effects
-     *
      * `returnValue`: The value that will be yielded from the coroutine. Can be specified by return
      * statement or error handler. Return value present is semanticaly equivalent to done = true
      *
@@ -362,61 +267,34 @@ export function runWithOptions(options, runnable, ...args) {
   }
 
   myZone.cor = cor
-  if (parentCor != null) {
-    if (options.killOnEnd) {
-      cor.parent = parentCor
-      onReturn(parentCor, (err, res) => {
-        // if cor already terminated, killing do nothing
-        kill(cor)
-        delete cor.parent
-      })
-    } else {
-      makeLink(cor, parentCor)
-      onReturn(cor, (err, res) => {
-        unLink(cor)
-        tryEnd(parentCor)
-      })
-    }
-  }
-
-  // if parent in inspect mode, don't run the coroutine
-  if (!(parentCor != null && parentCor.options.inspectMode)) {
-    if (options.immediately) {
-      runLater(cor, runnable, ...args)
-    } else {
-      setTimeout(() => runLater(cor, runnable, ...args), 0)
-    }
-  }
-
+  ensureParentChildRelationship(global[pidString], cor)
+  setTimeout(() => runLater(cor, runnable, ...args), 0)
   return cor
 }
 
 function runLater(cor, runnable, ...args) {
+  // it may happen that the coroutine was already killed
+  if (isDone(cor)) {
+    return
+  }
   // the coroutine is to be started, so no more messing with config from now on
   cor.configLocked = true
-  runnable = resolvePatched(cor, runnable)
-  if (isCor(runnable)) {
-    onReturn(runnable, (err, msg) => {
-      if (err == null) {
-        setDone(cor, {returnValue: msg})
-      } else {
-        handleError(cor, err)
-      }
-    })
-  } else if (cor.options.nsc) {
-    runNodeCbAcceptingFn(cor, runnable, args)
-  } else if (typeof runnable === 'function') {
+
+  // it's only now that we can determine the parent for sure
+
+  const options = cor.options
+
+  ensureParentChildRelationship(options.parent, cor)
+
+  if (typeof runnable === 'function') {
     const gen = runnable(...args)
-    if (looksLikePromise(gen)) {
-      runPromise(cor, gen)
-    } else if (gen != null && typeof gen.next === 'function') {
+    if (gen != null && typeof gen.next === 'function') {
+      cor.generator = gen
       runGenerator(cor, gen)
     } else {
       console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)
       handleError(cor, new Error('unknown first argument'))
     }
-  } else if (looksLikePromise(runnable)) {
-    runPromise(runnable, cor)
   } else {
     console.error(`unknown first argument (type: ${typeof runnable}),`, runnable)
     handleError(cor, new Error('unknown first argument'))
@@ -473,28 +351,29 @@ export function onReturn(cor, cb) {
 const terminatedError = new Error('Coroutine was terminated')
 terminatedError.type = terminatedErrorType
 
+/* kill(cor), or kill(cor, val). In the later case, kills the coroutine with the resulting value
+ * instead of error. OnKill handlers will be runned before the coroutine is marked as done.
+ */
 export function kill(...args) {
   const cor = args[0]
-  if (!isDone(cor)) {
-    let options = {}
-    if (args.length > 1) {
-      options.returnValue = args[1]
-    } else if (cor.options.onError != null) {
-      try {
-        options.returnValue = cor.options.onError(terminatedError)
-      } catch (e) {
-        handleError(cor, e)
-      }
-    } else {
-      options.error = terminatedError
+
+  assertCor(cor)
+
+  function maybeInvokeOnKill() {
+    if (cor.options.onKill) {
+      cor.options.onKill()
     }
-    // if error handler throws
-    if (!isDone(cor)) {
-      if (cor.options.onKill) {
-        cor.options.onKill()
-      }
-      setDone(cor, options)
-    }
+  }
+
+  if (isDone(cor)) {
+    return
+  }
+
+  maybeInvokeOnKill()
+  if (args.length > 1) {
+    setDone(cor, {returnValue: args[1]})
+  } else {
+    setDone(cor, {error: terminatedError})
   }
   for (let child of cor.children) {
     kill(child)

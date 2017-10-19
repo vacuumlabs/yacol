@@ -27,3 +27,6 @@ pids
 .sublimelinterrc
 
 __local.js
+
+# it's a libary, it shouldn't have it's dependencies locked
+yarn.lock

@@ -1,125 +1,53 @@
-# Coroutines
-
-### yacol.run(fn, ...args)
-Returns a Coroutine object. `fn(...args)` should return either a generator (i.e. `fn`
-should be a generator function) or a Promise.
-
-In the generator which is used for spawning a coroutine, writing `var value = yield something` means
-that the execution should pause at the current line until the asynchronous value is obtained. You
-can yield:
-
-- Coroutine. In such a case, value will be the return value of the yielded coroutine.
-- Promise. The value will be the value with what the promise fulfilled.
-
-Errors from a Coroutine / Promise are propagated to the current coroutine. See [error handling](https://github.com/vacuumlabs/yacol/blob/master/docs/features.md#error-handling) section.
-
-### yacol.runc(fn, ...args)
-Creates a coroutine from node-style-callback accepting function `fn`. Yacol expects that `fn(...args,
-cb)` will execute callback with two arguments: Error (if any) and the result of the asynchronous
-calculation. For example
-`const buf = yield runc(fs.readFile, filename)`
-reads the file into buffer.
-
-### yacol.kill(coroutine)
-
-:information_source: Check out [README](https://github.com/vacuumlabs/yacol#basic-design-principles)
-for some intro to error handling.
-
-The coroutine and all its children, grandchildren, etc, will stop doing their work. The current
-async operations in progress (i.e. network request in progress) will not be terminated (as there is no way to
-do this nicely), however the resulting values of these operations will be discarded and no more work
-will be performed.
+# Basic semantics
+- async function are transformed, so instead of standard Promise they returns (so called) Coroutine
+- Coroutine is Promise-like object (it's .then-able and .catch-able), but the following:
+- All the async functions which are called within a given Coroutine produce child Coroutines.
+- If any child Coroutine errors, the error is propagated to it's parent, grandparend, etc..
+- Parent can catch errors on child coroutine by try-catch block. The child Coroutine must be
+  awaited inside try-block, otherwise, try-catch has no effect on error and it propagates to further
+  parents
+- Coroutine terminates only after all children Coroutine are terminated
+- If coroutine is killed, no more commands from it will be executed. Furthermore, all it's (direct and transitive) children are also killed.
 
 # Coroutine object
 
-### const val = yield coroutine
-Blocks until `coroutine` and all its spawned child coroutines finish. `val` will then take the
-value returned by `coroutine`. If `coroutine` (or any child coroutines) produce an error which is
-not handled by `.catch` handler, this error will be propagated to the current coroutine (even if the
-current coroutine is not a parent of `coroutine`). If you wish to yield from a coroutine which may
-produce unhandled errors, you can catch those errors and provide on-error return value (in this case 47):
-
-```javascript
-const res = yield run(function*() {
-  return (yield coroutine)
-}).catch((e) => 47)
-```
-
-Check out [README](https://github.com/vacuumlabs/yacol#basic-design-principles) for an intro to
-error handling.
+All methods which modifies how coroutine work may be called only before the coroutine start. Once started, the
+options are freezed so the semantics of running coroutine is clear.
 
 ### coroutine.then(fn)
-In a Promise-like fashion, `fn` is executed when the coroutine is finished. Calling `.then` returns a
-new Promise, so you cannot chain `.then` with for example `.inspect` (in this order). Usually you
-don't need to `.then` coroutines, this feature is useful mostly when you want to integrate coroutines
-with some code that expects a Promise; for example thanks to this feature a coroutine can be returned by a Mocha test.
+Converts coroutine to Promise and attach .then handler
 
-### coroutine.catch(handler)
-:information_source: Check out [README](https://github.com/vacuumlabs/yacol#basic-design-principles)
-for some intro to error handling.
+### coroutine.catch()
+Converts coroutine to Promise and attach .catch handler
 
-Attaches error handler to the `coroutine`. Handler should be of the type `(err) => returnValue`. Once
-the bubbling error meets the `.catch` handler, the error bubbling is stopped and the `coroutine` is
-assumed to be done with a given `returnValue`. This means that `coroutine`s parent won't ever know
-about the error. Catching the error also affects other coroutines which may yield from `coroutine`.
-These coroutines will observe `returnValue` as a proper value returned by `coroutine`.
+### coroutine.name(label)
+Name the coroutine. Useful mostly for debugging.
 
-Returns the same Coroutine on which this was called.
+### coroutine.getName()
 
-### coroutine.inspect()
-Turn on the inspect mode. In the inspect mode, you can call `.step()` and `.takeEffect()` on the
-Coroutine. Returns the same Coroutine on which this was called.
+### coroutine.onKill(callback)
+Advanced stuff. Register callback which will be executed, if the coroutine was killed (directly, or
+as a result of its parent being killed)
 
-### yield coroutine.takeEffect()
-Only available in the inspect mode. `cor.takeEffect()` yields the object describing what
-`cor` tries to do. This object can take different forms as described below. Note that
-`channel.takeEffect` is internally just `.take` on internal `channel.effects` channel.
+### coroutine.detach()
+Overriding the default coroutine parent, create new root coroutine. Errors are not being propagated
+'up the tree', so take care, what you are doing!
 
-If `cor` tries to yield a sub-coroutine, `takeEffect()` will yield:
-```
-{
-  runnable: first argument of run,
-  args: rest of the arguments of run,
-}
-```
-If `cor` tries to yield a Promise object, `takeEffect()` will yield:
-```
-{
-  promise: yielded promise object
-}
-```
-If `cor` has ended and has nothing more to say, `takeEffect()` will yield:
-{
-  returnValue: return value of the coroutine,
-  done: true
-}
-If `cor` has ended because of an error, `takeEffect()` will yield:
-{
-  error: error, that was caught,
-  done: true
-}
+# Misc
 
-Note that `cor` is paused at the current yield and does not continue its execution until
-`cor.step(val)` is called.
+### yacol.kill(coroutine)
+Immediately terminate the coroutine, it's children, grandchildren, etc. Current work (i.e. ongoing
+fetch) will continue, but no more computation and no more side-effects will happen in any children.
+If you are writing your own version of e.g. fetch, you can use `onKill` handler to terminate the
+ongoing work.
 
-### coroutine.step(val)
-Only available in the inspect mode. Calling `cor.step(val)` will resume `cor` execution until the next
-`yield`, using `val` as the yielded value for the previous `yield`.
+### yacol.race({key1: coroutine1, key2: coroutine2, ...})
+Returns a coroutine that completes with the value that comes first. Returns `[key, result]`,
 
-### coroutine.patch([runnable1, substitute1], [runnable2, substitute2], ...)
-For this and **all child coroutines** of the current coroutine, change the implementation of
-`runnable_i` to `substitute_i`. For example, if you do `cor.patch([function_a, function_b])`, then
-wherever in the `cor` when you are trying to run `run(function_a, ...args)`,
-`run(function_b, ...args)` is executed instead. Note that patched runnable does not need to be a
-function. For example,
-```
-run("foo", ...args)
-```
-would normally fail (since "foo" is not a function), but if you patch "foo" with some reasonable
-implementation in `.patch`, everything will be OK.
-
-Internally, ES6 Map is used to store {runnable: substitute} mapping, which implies how lookup is
-performed.
+### yacol.prettyErrorLog(error)
+This displays error in a nice fashion. It
+- displays stacktrace info for all the coroutines which parents the errored one
+- filters out yacol internal stacktrace lines
 
 # Context
 
@@ -166,7 +94,7 @@ Creates channel (not bounded to any capacity).
 ### channel.put(message)
 Puts message to channel. The operation is non-blocking
 
-### yield channel.take()
+### await channel.take()
 Obtains a value from channel. If there is no value, it blocks until a value is available.
 
 # Advanced messaging concepts
@@ -206,24 +134,3 @@ provided, it is constructed (and returned). Similarly as in `mult`, you can spec
 Same as merge, but the resulting channel will contain `[key_i, msg]`, where `key_i` identifies the
 channel from which the message comes from.
 
-# Misc
-
-### yacol.prettyErrorLog(error)
-`console.error`s the error in a nice fashion. It uses information collected during the program
-execution to produce stacktrace with much more info than typical stacktraces have. This function is
-used by default for unhandled errors on the root coroutine.
-
-### yacol.alts({key1: coroutine1, key2: coroutine2, ...})
-Returns a coroutine that returns the value from the first finished coroutine. Returns `[key, result]`,
-where `result` is the result of the first coroutine which finished and `key` is the corresponding
-key under which the coroutine was passed to `alts`. If some coroutine finishes with error
-sooner than some result is produced, the resulting coroutine ends with this error.
-
-### yacol.runDetached(fn, ...args)
-
-:warning: this is pro-stuff you shouldn't use it unles you know what you are doing.
-
-Creates a root (i.e. parentless) coroutine. Unlike with `run`, the current coroutine, in which
-context this was called, does *not* become a parent of the newly created coroutine. This means that the
-detached coroutine does not block the termination of the current coroutine, and also the errors from
-the detached coroutine do not bubble to the current coroutine.

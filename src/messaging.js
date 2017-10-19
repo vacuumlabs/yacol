@@ -1,4 +1,4 @@
-import {runImmediately} from './cor'
+import {run} from './cor'
 import {channelType} from './constants'
 import {Queue} from './queue'
 import {assertChannel} from './utils'
@@ -7,23 +7,23 @@ import t from 'transducers-js'
 function getMessage(channel) {
   assertChannel(channel)
   let handle
-  return runImmediately(
-    {
-      onKill: () => {
-        if (handle != null) {
-          handle.dispose()
-        }
-      }
-    },
-    function*() {
-      const {queue} = channel
-      yield new Promise((resolve, reject) => {
+  return run(function*() {
+    const {queue} = channel
+    yield new Promise((resolve, reject) => {
+      try {
         handle = queue.next((val) => {
           resolve(val)
         })
-      })
-      return queue.pop()
+      } catch (err) {
+        reject(err)
+      }
     })
+    return queue.pop()
+  }).onKill(() => {
+    if (handle != null) {
+      handle.dispose()
+    }
+  })
 }
 
 export function putToChannel(channel, message) {

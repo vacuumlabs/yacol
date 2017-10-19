@@ -1,24 +1,17 @@
-import {run} from 'yacol'
-
-function* a(n) {
-  throw new Error('yuck fou')
+async function aaa(n) {
+  throw new Error('whooops')
 }
 
-function* b(n) {
-  const res = yield run(a, n + 1)
+async function bbb(n) {
+  const res = await aaa(n + 1)
   return res
 }
 
-function* c(n) {
-  const res = yield run(b, n + 1)
+async function ccc(n) {
+  const res = await bbb(n + 1)
   return res
 }
 
-function* d(n) {
-  const res = yield run(c, n + 1)
-  return res
-}
-
-run(function*() {
-  run(d, 1)
-})
+(async () => {
+  await ccc(1)
+})()

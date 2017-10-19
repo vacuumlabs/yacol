@@ -1,4 +1,4 @@
-import {pidString, corType, channelType, terminatedErrorType} from './constants'
+import {pidString, corType, channelType, terminatedErrorType, assertCorType} from './constants'
 
 export function isIterable(obj) {
   // checks for null and undefined
@@ -50,7 +50,9 @@ export function isCor(cor) {
 
 export function assertCor(cor) {
   if (!isCor(cor)) {
-    throw new Error('argument expected to be a cor')
+    const err = new Error('Argument expected to be a corroutine')
+    err.type = assertCorType
+    throw err
   }
 }
 
@@ -128,7 +130,7 @@ function prettyError(e, str = 'ERROR') {
     res.push('')
     res.push(`runnable: ${name}, args: [${args}]`)
     res.push(prettyStacktrace(cor.stacktrace))
-    cor = cor.parent
+    cor = cor.parent || cor.oldParent
   }
 }
 
