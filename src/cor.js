@@ -1,4 +1,4 @@
-import {pidString, corType, terminatedErrorType, badRunnableErrorType} from './constants'
+import {pidString, corType, terminatedErrorType} from './constants'
 import {isCor, assertCor, prettyErrorLog} from './utils'
 
 let idSeq = 0
@@ -79,9 +79,7 @@ const runGenerator = (cor, gen) => {
           }
         })
       } else {
-        const err = new Error(`Awaited object does not look like Coroutine or Promise (typeof: ${typeof nxt})`)
-        err.type = badRunnableErrorType
-        proceedWithError(err)
+        step(nxt)
       }
     }
   }
@@ -115,9 +113,10 @@ function tryEnd(cor) {
 function looksLikePromise(obj) {
   return (
     typeof obj === 'object' &&
+    (obj != null) &&
     typeof obj.then === 'function' &&
-    typeof obj.catch === 'function'
-  ) && !isCor(obj)
+    typeof obj.catch === 'function' &&
+    !isCor(obj))
 }
 
 function getStacktrace() {

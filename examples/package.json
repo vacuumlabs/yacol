@@ -1,6 +1,6 @@
 {
   "name": "examples",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "",
   "scripts": {
     "start": "babel-node"
@@ -22,7 +22,7 @@
     "eslint-plugin-import": "^2.0.0",
     "express": "^4.14.0",
     "mocha": "^3.1.2",
-    "yacol": "1.0.0"
+    "yacol": "1.1.0"
   },
   "engines": {
     "node": ">=6.2.0"

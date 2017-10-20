@@ -45,7 +45,10 @@ export function getCurrentCoroutine() {
 }
 
 export function isCor(cor) {
-  return (typeof cor === 'object' && cor != null && cor.type === corType)
+  return (
+    typeof cor === 'object' &&
+    cor != null &&
+    cor.type === corType)
 }
 
 export function assertCor(cor) {
