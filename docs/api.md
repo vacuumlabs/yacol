@@ -14,6 +14,9 @@
 All methods which modifies how coroutine work may be called only before the coroutine start. Once started, the
 options are freezed so the semantics of running coroutine is clear.
 
+### coroutine.toPromise()
+Converts coroutine to Promise
+
 ### coroutine.then(fn)
 Converts coroutine to Promise and attach .then handler
 
@@ -43,6 +46,10 @@ ongoing work.
 
 ### yacol.race({key1: coroutine1, key2: coroutine2, ...})
 Returns a coroutine that completes with the value that comes first. Returns `[key, result]`,
+
+### yacol.currentCoroutine()
+Returns currently running coroutine. Grabbing such reference is usually not needed, but may be handy
+for example for calling .withParent.
 
 ### yacol.prettyErrorLog(error)
 This displays error in a nice fashion. It

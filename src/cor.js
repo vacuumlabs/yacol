@@ -39,6 +39,7 @@ const runGenerator = (cor, gen) => {
   }
 
   function proceedWithError(err) {
+    if (isDone(cor)) {return}
     try {
       const nxtNxt = gen.throw(err)
       processNxt(nxtNxt)
@@ -145,9 +146,12 @@ function isDone(corr) {
   return (('returnValue' in corr) || ('error' in corr))
 }
 
-// see documentation
 export function run(runnable, ...args) {
   return runWithOptions({}, runnable, ...args)
+}
+
+export function currentCoroutine() {
+  return global[pidString]
 }
 
 export function coroutine(fn) {
@@ -245,6 +249,7 @@ export function runWithOptions(options, runnable, ...args) {
     returnListeners: new Set(),
     then,
     catch: _catch,
+    toPromise: toPromise,
     /* `parent` is used as a parent for the newly created coroutine. This creates other-than-default
      * coroutine hierarchy and should be used with care */
     withParent: (parent) => addToOptions('parent', parent),

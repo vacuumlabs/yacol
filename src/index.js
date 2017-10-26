@@ -7,3 +7,4 @@ export * from './race'
 export * from './messaging-advanced'
 export const prettyErrorLog = pel
 export const killHandler = kh
+export {isCor} from './utils'

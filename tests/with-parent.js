@@ -1,4 +1,4 @@
-import {context} from '../dist'
+import {context, currentCoroutine} from '../dist'
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
 import Promise from 'bluebird'
@@ -77,4 +77,41 @@ describe('with-parent', () => {
 
     timeApprox(0)
   })
+
+  it('coroutine-promise-coroutine sandwich', async () => {
+    let here1 = false, here2 = false, here3 = false
+
+    function doLater(fn) {
+      return Promise.delay(10).then(() => fn().toPromise())
+    }
+
+    try {
+      await (async function() {
+        const parent = currentCoroutine()
+        try {
+          await doLater(() => {
+            async function doThrow() {
+              await Promise.delay(10)
+              throw new Error('so bad')
+            }
+            return doThrow().withParent(parent)
+          })
+          // wont get here - awaited failed Promise
+          here1 = true
+        } catch (err) {
+          // won't get here - the whole stuff will be terminated sooner than this could exectute
+          here2 = true
+        }
+      })()
+    } catch (err) {
+      //will get here - artificialy set parent must handle child errors
+      here3 = true
+    }
+    // wait until all asynchronous work is done
+    await Promise.delay(50)
+    assert.isNotOk(here1)
+    assert.isNotOk(here2)
+    assert.isOk(here3)
+  })
+
 })

@@ -1,6 +1,7 @@
 import {Promise} from 'bluebird'
 import {assert} from 'chai'
 import {resetTimer, timeApprox} from './utils'
+import {isCor, currentCoroutine} from '../dist'
 
 async function inc(a, b) {
   await Promise.delay(100)
@@ -8,6 +9,23 @@ async function inc(a, b) {
 }
 
 beforeEach(resetTimer)
+
+describe('basics', () => {
+  it('curentCoroutine', async () => {
+    const current = currentCoroutine()
+    assert.isOk(isCor(current))
+  })
+
+  it('toPromise works', () => Promise.resolve().then(() =>
+    (async function() {
+      await Promise.delay(10)
+      return 4
+    })().toPromise()
+  ).then((res) => {
+    assert.equal(res, 4)
+  }))
+
+})
 
 describe('obscure', () => {
 
