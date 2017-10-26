@@ -118,6 +118,15 @@ export function prettyStacktrace(stacktrace) {
   return res.join('\n')
 }
 
+function elipsize(val, length) {
+  const res = `${val}`
+  if (res.length <= length) {
+    return res
+  } else {
+    return res.substring(0, length) + '...'
+  }
+}
+
 function prettyError(e, str = 'ERROR') {
   const res = []
   let cor = e.cor
@@ -128,10 +137,10 @@ function prettyError(e, str = 'ERROR') {
     if (cor == null) {
       return res
     }
-    const name = cor.runnable ? (cor.runnable.name || '[Function]') : cor.runnable
-    const args = `${cor.args}`
+    const name = elipsize(cor.runnable ? (cor.runnable.name || '[Function]') : cor.runnable, 50)
+    const args = cor.args.map((arg) => elipsize(arg, 30))
     res.push('')
-    res.push(`runnable: ${name}, args: [${args}]`)
+    res.push(`runnable: ${name}, args: [${args.join(', ')}]`)
     res.push(prettyStacktrace(cor.stacktrace))
     cor = cor.parent || cor.oldParent
   }
