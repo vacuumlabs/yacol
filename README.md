@@ -1,5 +1,3 @@
-[![CircleCI](https://circleci.com/gh/vacuumlabs/yacol.svg?style=svg)](https://circleci.com/gh/vacuumlabs/yacol)
-
 Yet Another COroutine Library with some unique features.
 
 # Why this
